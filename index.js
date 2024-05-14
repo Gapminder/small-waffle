@@ -27,7 +27,7 @@ https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&
 
 */
 
-console.log(process.env.NODE_ARGS)
+console.log("rootPath")
 const rootPath = path.resolve(process.env.NODE_ARGS|| "../datasets/");
 
 const getDatasets = function(source){
@@ -36,6 +36,7 @@ const getDatasets = function(source){
   .map(dirent => dirent.name)
 }
 
+console.log("datasetFolders")
 const datasetFolders = getDatasets(rootPath);
 
 
@@ -66,6 +67,7 @@ let datasets = [
 
 
 for (let dataset of datasets) {
+  console.log("looking " + dataset.slug)
   if(!datasetFolders.includes(dataset.id)) {
     console.error("DATASET NOT FOUND LOCALLY: " + JSON.stringify(dataset));
     dataset = null;
