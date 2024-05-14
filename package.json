@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "nodemon index.js ../../open-numbers",
-    "start:prod": "pm2 start index.js ../datasets --name small-waffle",
+    "start:prod": "pm2 start index.js --node-args='../datasets' --name small-waffle",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "echo 'No build step required for serverless functions'"
   },
