@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@vizabi/reader-ddfcsv": "^4.1.1",
+    "itty-router": "^5.0.17",
     "koa": "^2.15.3",
     "koa-router": "^12.0.1",
     "urlon": "^2.1.0"
