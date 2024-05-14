@@ -40,18 +40,24 @@ const datasetFolders = getDatasets(rootPath);
 
 
 const resultTransformer = function(result) {
+  const header = Object.keys(result[0] || {});
+
   const rows = result.map((record) => {
-    for (const key in record) {
+    const values = [];
+    for (const key of header) {
+      let value = record[key];
       if (record[key] instanceof Date)
-        record[key] = +record[key].getUTCFullYear();
+        value = +record[key].getUTCFullYear();
       if (typeof record[key] === "boolean") 
-        record[key] = +record[key];
+        value = +record[key];
       // numbers and strings are all good!
+
+      values.push(value);
     }
-    return Object.values(record);
+    return values;
   });
 
-  return { header: Object.keys(result[0] || {}), rows, version: "" };
+  return { header, rows, version: "" };
 };
 
 
