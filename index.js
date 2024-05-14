@@ -44,6 +44,9 @@ const resultTransformer = function(result) {
     for (const key in record) {
       if (record[key] instanceof Date)
         record[key] = +record[key].getUTCFullYear();
+      if (typeof record[key] === "boolean") 
+        record[key] = +record[key];
+      // numbers and strings are all good!
     }
     return Object.values(record);
   });
