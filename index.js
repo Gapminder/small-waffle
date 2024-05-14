@@ -26,7 +26,9 @@ https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_select_key@=key&=value;&valu
 https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&from=datapoints.schema
 
 */
-const rootPath = path.resolve(process.argv[2] || "../datasets/");
+
+console.log(process.env.NODE_ARGS)
+const rootPath = path.resolve(process.env.NODE_ARGS|| "../datasets/");
 
 const getDatasets = function(source){
   return fs.readdirSync(source, { withFileTypes: true })
