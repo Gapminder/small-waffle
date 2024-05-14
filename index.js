@@ -2,6 +2,8 @@ import Koa from "koa";
 import Router from "koa-router";
 import Urlon from "urlon";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
+import * as path from 'path';
+import * as fs from 'fs';
 const app = new Koa();
 const port = 3333;
 const api = new Router(); // routes for the main API
@@ -24,18 +26,62 @@ https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_select_key@=key&=value;&valu
 https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&from=datapoints.schema
 
 */
+const rootPath = path.resolve(process.argv[2] || "../datasets/");
+
+const getDatasets = function(source){
+  return fs.readdirSync(source, { withFileTypes: true })
+  .filter(dirent => dirent.isDirectory() && dirent.name.includes("ddf--"))
+  .map(dirent => dirent.name)
+}
+
+const datasetFolders = getDatasets(rootPath);
+
+
+const resultTransformer = function(result) {
+  return result.map((record) => {
+    for (const key in record) {
+      if (record[key] instanceof Date)
+        record[key] = "" + record[key].getUTCFullYear();
+      if (typeof record[key] === "number") record[key] = "" + record[key];
+    }
+    return record;
+  });
+};
+
+
 
 const githubTemplate = (id) => `https://github.com/open-numbers/${id}.git`;
 
-const datasetSlugToDdfId = {
-  fasttrack: "ddf--gapminder--fasttrack",
-  "billy-master": "ddf--gapminder--billionaires",
-  "povcalnet-master": "ddf--worldbank--povcalnet",
-  "sg-master": "ddf--gapminder--systema_globalis",
-  "population-master": "ddf--gapminder--population",
-  "wdi-master": "ddf--open_numbers--world_development_indicators.git",
-  "country-flags": "ddf--gapminder--country_flag_svg",
-};
+let datasets = [
+  {slug: "fasttrack", id: "ddf--gapminder--fasttrack"},
+  {slug: "billy-master", id: "ddf--gapminder--billionaires"},
+  {slug: "povcalnet-master", id: "ddf--worldbank--povcalnet"},
+  {slug: "sg-master", id: "ddf--gapminder--systema_globalis"},
+  {slug: "population-master", id: "ddf--gapminder--population"},
+  {slug: "wdi-master", id: "ddf--open_numbers--world_development_indicators"},
+  {slug: "country-flags", id: "ddf--gapminder--country_flag_svg"},
+];
+
+
+for (let dataset of datasets) {
+  if(!datasetFolders.includes(dataset.id)) {
+    console.error("DATASET NOT FOUND LOCALLY: " + JSON.stringify(dataset));
+    dataset = null;
+    
+  } else {
+    dataset.readerInstance = new DDFCsvReader.getDDFCsvReaderObject();
+    dataset.readerInstance.init({
+      // TOOD: Make this respect "version" parm
+      path: rootPath + "/" + dataset.id,
+      resultTransformer,
+    });
+
+    console.info("Created a reader instance for " + dataset.slug)
+  }
+}
+
+datasets = datasets.filter(f => f);
+
 
 api.get("/ddf-service-directory", (ctx, next) => {
   ctx.body = {
@@ -50,7 +96,7 @@ api.get("/", async (ctx, next) => {
    * List all (public) datasets that are currently available.
    */
   Log.debug("Received a list all (public) datasets request");
-  ctx.body = "sdljksdfjksdfsdflsdf";
+  ctx.body = "Welcome to small waffle! " + (datasets.length ? "Available datasets are: " + datasets.map(m => m.slug).join(", ") : "No datasets on the server");
 });
 
 api.get(
@@ -93,25 +139,10 @@ api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
     );
   }
 
-  const ddfReader = new DDFCsvReader.getDDFCsvReaderObject();
-  // TOOD: Make this dynamic and respect "version" param
-  ddfReader.init({
-    path: datasetSlugToDdfId[datasetSlug],
-    resultTransformer: (result) => {
-      return result.map((record) => {
-        for (const key in record) {
-          if (record[key] instanceof Date)
-            record[key] = "" + record[key].getUTCFullYear();
-          if (typeof record[key] === "number") record[key] = "" + record[key];
-        }
-        return record;
-      });
-    },
-  });
-
-  const data = await ddfReader.read(ddfQuery, {
-    //time: (d) => "" + d.getUTCFullYear(),
-  });
+  const dataset = datasets.find(f => f.slug === datasetSlug);
+  if (!dataset) console.error("Query error: Dataset not found:", datasetSlug);
+  
+  const data = await dataset.readerInstance.read(ddfQuery);
 
   ctx.body = data;
 });
