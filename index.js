@@ -43,8 +43,7 @@ const resultTransformer = function(result) {
   const rows = result.map((record) => {
     for (const key in record) {
       if (record[key] instanceof Date)
-        record[key] = "" + record[key].getUTCFullYear();
-      if (typeof record[key] === "number") record[key] = "" + record[key];
+        record[key] = +record[key].getUTCFullYear();
     }
     return Object.values(record);
   });
