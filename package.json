@@ -10,9 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "itty-router": "^0.7.0",
-    "urlon": "^1.0.3",
-    "@vizabi/reader-ddfcsv": "^0.2.0"
+    "@vizabi/reader-ddfcsv": "^4.1.1",
+    "koa": "^2.15.3",
+    "koa-router": "^12.0.1",
+    "urlon": "^2.1.0"
   },
   "devDependencies": {}
 }
