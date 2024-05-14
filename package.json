@@ -1,0 +1,18 @@
+{
+  "name": "small-waffle",
+  "version": "0.1.0",
+  "description": "Serverless functions for Cloudflare Pages using itty-router and DDFCsvReader.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo 'No build step required for serverless functions'"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "itty-router": "^0.7.0",
+    "urlon": "^1.0.3",
+    "@vizabi/reader-ddfcsv": "^0.2.0"
+  },
+  "devDependencies": {}
+}
