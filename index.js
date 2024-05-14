@@ -27,7 +27,6 @@ https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&
 
 */
 
-console.log("rootPath")
 
 const rootPath = path.resolve(process.env.NODE_ARGS|| "../datasets/");
 
@@ -37,19 +36,20 @@ const getDatasets = function(source){
   .map(dirent => dirent.name)
 }
 
-console.log("datasetFolders")
 const datasetFolders = getDatasets(rootPath);
 
 
 const resultTransformer = function(result) {
-  return result.map((record) => {
+  const rows = result.map((record) => {
     for (const key in record) {
       if (record[key] instanceof Date)
         record[key] = "" + record[key].getUTCFullYear();
       if (typeof record[key] === "number") record[key] = "" + record[key];
     }
-    return record;
+    return Object.values(record);
   });
+
+  return { header: Object.keys(result[0] || {}), rows, version: "" };
 };
 
 
@@ -68,7 +68,6 @@ let datasets = [
 
 
 for (let dataset of datasets) {
-  console.log("looking " + dataset.slug)
   if(!datasetFolders.includes(dataset.id)) {
     console.error("DATASET NOT FOUND LOCALLY: " + JSON.stringify(dataset));
     dataset = null;
