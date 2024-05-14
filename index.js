@@ -28,6 +28,7 @@ https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&
 */
 
 console.log("rootPath")
+
 const rootPath = path.resolve(process.env.NODE_ARGS|| "../datasets/");
 
 const getDatasets = function(source){

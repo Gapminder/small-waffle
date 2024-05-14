@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "export NODE_ARGS='../../open-numbers' && nodemon index.js",
-    "start:prod": "pm2 start index.js --node-args='../datasets' --name small-waffle",
+    "start:prod": "export NODE_ARGS='../datasets' && pm2 start index.js --name small-waffle --update-env",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "echo 'No build step required for serverless functions'"
   },
