@@ -8,6 +8,7 @@ const app = new Koa();
 const port = 3333;
 const api = new Router(); // routes for the main API
 const Log = console;
+import duckdb from 'duckdb';
 /*
 //entity request
 https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_language=en&select_key@=geo;&value@=world/_4region&=is--world/_4region;;&from=entities&where_$or@_un/_state:true
@@ -119,6 +120,73 @@ api.get(
   },
 );
 
+const db = new duckdb.Database(':memory:');
+let duckdbDataLoaded = false;
+
+import util from "util"
+
+async function foo() {
+
+  // Define the paths to the Parquet files
+  const populationAgeGeoYearParquet = 'population-master_age$geo$year_2024052101.parquet';
+  const populationGeoParquet = 'population-master_geo_2024052101.parquet';
+
+
+  // Function to execute the SQL query and return the rows
+  async function executeQuery() {
+    const con = db.connect();
+
+    // Promisify the con.run and con.all methods
+    const runAsync = util.promisify(con.run.bind(con));
+    const allAsync = util.promisify(con.all.bind(con));
+
+    try {
+      if (!duckdbDataLoaded) {
+        await runAsync(`CREATE TABLE population_age_geo_year AS SELECT * FROM parquet_scan('${populationAgeGeoYearParquet}')`);
+        await runAsync(`CREATE TABLE population_geo AS SELECT * FROM parquet_scan('${populationGeoParquet}')`);
+        duckdbDataLoaded = true;
+      }
+
+      const query = `
+      SELECT 
+          "population_age_geo_year"."age", 
+          "population_age_geo_year"."geo", 
+          "population_age_geo_year"."year", 
+          "population_age_geo_year"."population"
+      FROM 
+          "population_age_geo_year"
+      INNER JOIN 
+          "population_geo" 
+      ON 
+          "population_age_geo_year"."geo" = "population_geo"."geo"
+      WHERE 
+          "population_geo"."geo" IN ('swe');
+    `;
+
+      const rows = await allAsync(query);
+      con.close();
+      return rows;
+
+    } catch (err) {
+      con.close();
+      throw err;
+    }
+  }
+
+
+  // Execute the function
+  return executeQuery();
+}
+
+function convertBigIntToNumber(obj) {
+  for (let key in obj) {
+    if (typeof obj[key] === 'bigint') {
+      obj[key] = Number(obj[key]);
+    }
+  }
+  return obj;
+}
+
 api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
   Log.debug("Received DDF query");
 
@@ -149,6 +217,13 @@ api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
         ? `Query is malformed: ${err.message}`
         : err.message,
     );
+  }
+
+  if (datasetSlug === "benchduckdb") {
+    const rows = await foo();
+    // console.log({ rows });
+    ctx.body = rows.map(convertBigIntToNumber);
+    return;
   }
 
   const dataset = datasets.find(f => f.slug === datasetSlug);
