@@ -188,18 +188,18 @@ function convertBigIntToNumber(obj) {
 }
 
 api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
-  Log.debug("Received DDF query");
+  // Log.debug("Received DDF query");
 
   let json, ddfQuery;
   let version = ctx.params.version;
   let datasetSlug = ctx.params.dataset;
-  Log.debug({ version, datasetSlug });
+  // Log.debug({ version, datasetSlug });
 
   try {
     if (!(typeof ctx.querystring === "string" && ctx.querystring.length > 10)) {
       throw new Error("Request has no query");
     }
-    console.debug("ctx.querystring", ctx.querystring);
+    // console.debug("ctx.querystring", ctx.querystring);
     try {
       json = Urlon.parse(decodeURIComponent(ctx.querystring)); // despite using urlon we still need to decode!
     } catch (urlonError) {
@@ -207,7 +207,7 @@ api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
       json = JSON.parse(decodeURIComponent(ctx.querystring));
     }
     ddfQuery = json;
-    Log.debug({ ddfQuery });
+    // Log.debug({ ddfQuery });
   } catch (err) {
     // malformed queries get logged, but don't raise errors/alarms
     Log.info(json ? { ddfQuery: json, req: ctx.request, err } : err);
