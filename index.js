@@ -2,99 +2,18 @@ import Koa from "koa";
 import Router from "koa-router";
 import serve from "koa-static";
 import Urlon from "urlon";
-import DDFCsvReader from "@vizabi/reader-ddfcsv";
-import * as path from 'path';
-import * as fs from 'fs';
+import {
+  datasetBranchCommitMapping,
+  datasetVersionReaderInstances,
+  loadAllAllowedDatasets,
+  syncDataset
+} from "./datasetManagement.js";
 const app = new Koa();
 const port = 3333;
 const api = new Router(); // routes for the main API
 const Log = console;
-/*
-//entity request
-https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_language=en&select_key@=geo;&value@=world/_4region&=is--world/_4region;;&from=entities&where_$or@_un/_state:true
-https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_language=en&select_key@=geo;&value@=world/_4region&=is--world/_4region;;&from=entities&where_$or@_un/_state:true
 
-//example of a datapoint request
-https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_language=en&select_key@=geo&=time;&value@=pop&=lex&=gdp/_pcap;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_un/_state:true
-https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_language=en&select_key@=geo&=time;&value@=pop&=lex&=gdp/_pcap;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_un/_state:true
-
-//example of a concept schema request
-https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&from=concepts.schema
-https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&from=concepts.schema
-
-//example of a datapoint schema request
-https://big-waffle.gapminder.org/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&from=datapoints.schema
-https://66k3gz-3000.csb.app/fasttrack/aaaf2d7?_select_key@=key&=value;&value@;;&from=datapoints.schema
-
-*/
-
-
-const rootPath = path.resolve(process.env.NODE_ARGS|| "../datasets/");
-
-const getDatasets = function(source){
-  return fs.readdirSync(source, { withFileTypes: true })
-  .filter(dirent => dirent.isDirectory() && dirent.name.includes("ddf--"))
-  .map(dirent => dirent.name)
-}
-
-const datasetFolders = getDatasets(rootPath);
-
-
-const resultTransformer = function(result) {
-  const header = Object.keys(result[0] || {});
-
-  const rows = result.map((record) => {
-    const values = [];
-    for (const key of header) {
-      let value = record[key];
-      if (record[key] instanceof Date)
-        value = +record[key].getUTCFullYear();
-      if (typeof record[key] === "boolean") 
-        value = +record[key];
-      // numbers and strings are all good!
-
-      values.push(value);
-    }
-    return values;
-  });
-
-  return { header, rows, version: "" };
-};
-
-
-
-const githubTemplate = (id) => `https://github.com/open-numbers/${id}.git`;
-
-let datasets = [
-  {slug: "fasttrack", id: "ddf--gapminder--fasttrack"},
-  {slug: "billy-master", id: "ddf--gapminder--billionaires"},
-  {slug: "povcalnet-master", id: "ddf--worldbank--povcalnet"},
-  {slug: "sg-master", id: "ddf--gapminder--systema_globalis"},
-  {slug: "population-master", id: "ddf--gapminder--population"},
-  {slug: "wdi-master", id: "ddf--open_numbers--world_development_indicators"},
-  {slug: "country-flags", id: "ddf--gapminder--country_flag_svg"},
-];
-
-
-for (let dataset of datasets) {
-  if(!datasetFolders.includes(dataset.id)) {
-    console.error("DATASET NOT FOUND LOCALLY: " + JSON.stringify(dataset));
-    dataset = null;
-    
-  } else {
-    dataset.readerInstance = new DDFCsvReader.getDDFCsvReaderObject();
-    dataset.readerInstance.init({
-      // TOOD: Make this respect "version" parm
-      path: rootPath + "/" + dataset.id,
-      resultTransformer,
-    });
-
-    console.info("Created a reader instance for " + dataset.slug)
-  }
-}
-
-datasets = datasets.filter(f => f.readerInstance);
-
+loadAllAllowedDatasets()
 
 api.get("/ddf-service-directory", (ctx, next) => {
   ctx.body = {
@@ -117,6 +36,15 @@ api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
     if (!dataset) ctx.body = "Dataset not found: " + datasetSlug;
     if (dataset) ctx.body = "Dataset found: " + datasetSlug;
   }
+});
+
+api.get("/sync/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
+  /*
+   * Sync the dataset metadata and files between disk, memory and GitHub
+   */
+  let datasetSlug = ctx.params.dataset;
+  const foo = await syncDataset(datasetSlug);
+  ctx.body = {status: 'synced', "foo": foo, "bar": "zoo"}
 });
 
 api.get(
@@ -153,13 +81,31 @@ api.get(
   },
 );
 
-api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
+api.get("/:dataset([-a-z_0-9]+)", async (ctx, next) => {
+  // Log.debug("Received DDF query");
+  // const datasetBranchCommitMapping
+});
+
+api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)", async (ctx, next) => {
   //Log.debug("Received DDF query");
 
   let json, ddfQuery;
   let version = ctx.params.version;
   let datasetSlug = ctx.params.dataset;
-  //Log.debug({ version, datasetSlug });
+  Log.debug({ version, datasetSlug });
+
+  // TODO: check if version is a commit-sha or a branch... if branch, redirect
+  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug]
+
+  if (version) {
+    if (branchCommitMapping[version]) {
+      const commit = branchCommitMapping.get(version);
+      // TODO: Redirect because version was a branch
+    }
+  } else {
+    const commit = branchCommitMapping["master"];
+    // TOOD: Redirect to default branch's commit
+  }
 
   try {
     if (!(typeof ctx.querystring === "string" && ctx.querystring.length > 10)) {
@@ -185,12 +131,18 @@ api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?", async (ctx, next) => {
     );
   }
 
-  const dataset = datasets.find(f => f.slug === datasetSlug);
-  if (!dataset) console.error("Query error: Dataset not found:", datasetSlug);
-  
-  const data = await dataset.readerInstance.read(ddfQuery);
+  try {
+    const readerInstance = datasetVersionReaderInstances[datasetSlug][version];
+    const data = await readerInstance.read(ddfQuery);
+    ctx.body = data;
+  } catch (err) {
+    console.error(err, err.stack)
+    ctx.throw(
+      500,
+      err.message,
+    );
+  }
 
-  ctx.body = data;
 });
 
 app.use(api.routes());

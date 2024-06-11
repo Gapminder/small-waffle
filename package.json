@@ -5,8 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "export NODE_ARGS='../../open-numbers' && nodemon index.js",
-    "start:prod": "export NODE_ARGS='../datasets' && pm2 start index.js --name small-waffle --update-env",
+    "start": "nodemon index.js --ignore datasets/",
+    "start:prod": "pm2 start index.js --name small-waffle --update-env",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "echo 'No build step required for serverless functions'"
   },
@@ -14,11 +14,14 @@
   "license": "ISC",
   "dependencies": {
     "@vizabi/reader-ddfcsv": "^4.3.2",
+    "isomorphic-git": "^1.25.10",
     "itty-router": "^5.0.17",
     "koa": "^2.15.3",
     "koa-router": "^12.0.1",
     "koa-static": "^5.0.0",
-    "urlon": "^2.1.0"
+    "simple-git": "^3.25.0",
+    "urlon": "^2.1.0",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
