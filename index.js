@@ -1,5 +1,6 @@
 import Koa from "koa";
 import Router from "koa-router";
+import serve from "koa-static";
 import Urlon from "urlon";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import * as path from 'path';
@@ -92,7 +93,7 @@ for (let dataset of datasets) {
   }
 }
 
-datasets = datasets.filter(f => f);
+datasets = datasets.filter(f => f.readerInstance);
 
 
 api.get("/ddf-service-directory", (ctx, next) => {
@@ -103,19 +104,52 @@ api.get("/ddf-service-directory", (ctx, next) => {
   };
 });
 
-api.get("/", async (ctx, next) => {
+api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
   /*
    * List all (public) datasets that are currently available.
    */
-  Log.debug("Received a list all (public) datasets request");
-  ctx.body = "Welcome to small waffle! " + (datasets.length ? "Available datasets are: " + datasets.map(m => m.slug).join(", ") : "No datasets on the server");
+  let datasetSlug = ctx.params.dataset;
+  if (!datasetSlug) {
+    Log.debug("Received a list all (public) datasets request");
+    ctx.body = "Welcome to small waffle! " + (datasets.length ? "Available datasets are: " + datasets.map(m => m.slug).join(", ") : "No datasets on the server");
+  } else {
+    const dataset = datasets.find(f => f.slug === datasetSlug);
+    if (!dataset) ctx.body = "Dataset not found: " + datasetSlug;
+    if (dataset) ctx.body = "Dataset found: " + datasetSlug;
+  }
 });
 
 api.get(
   "/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)",
   async (ctx, next) => {
-    Log.debug("Received asset query");
-    throw new Error("Not implemented");
+    try {
+      Log.debug("Received asset query");
+      //const dataset = await Dataset.open(ctx.params.dataset, ctx.params.version, true)
+
+      let version = ctx.params.version;
+      let datasetSlug = ctx.params.dataset;
+
+      const dataset = datasets.find(f => f.slug === datasetSlug);
+      if (!dataset) console.error("Query error: Dataset not found:", datasetSlug);
+
+      //if (!ctx.params.version) {
+      //  ctx.redirect(`/${dataset.name}/${dataset.version}/assets/${ctx.params.asset}`)
+      //} else {
+        
+        //ctx.status = 301 // Permanent redirect!
+        //ctx.redirect(rootPath + "/" + dataset.id + "/assets/" + ctx.params.asset);
+
+        const path = rootPath + "/" + dataset.id + "/assets/" + ctx.params.asset;
+        app.use(serve(path));
+      //}
+    } catch (err) {
+      if (err.code === 'DDF_DATASET_NOT_FOUND') {
+        ctx.throw(404, err.message)
+      } else {
+        Log.error(err)
+      }
+      ctx.throw(500, `Sorry, the DDF Service seems to have a problem, try again later`)
+    }
   },
 );
 
