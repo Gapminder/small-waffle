@@ -2,7 +2,6 @@ import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node/index.cjs';
 import fs from 'fs';
 import path from 'path';
-import {createTempDir} from "./createTempDir.js";
 import {ensureRepoIsCheckedOut} from "./checkOutBranches.js";
 import {repoUrlTemplate} from "./repoUrlTemplate.js";
 
