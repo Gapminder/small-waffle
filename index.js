@@ -81,30 +81,51 @@ api.get(
   },
 );
 
-api.get("/:dataset([-a-z_0-9]+)", async (ctx, next) => {
-  // Log.debug("Received DDF query");
-  // const datasetBranchCommitMapping
-});
+api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
+  let datasetSlug = ctx.params.datasetSlug;
+  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+  const queryString = ctx.querystring; // Get the original query string
 
-api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)", async (ctx, next) => {
+  const commit = branchCommitMapping["master"];
+  console.info("Redirecting to default branch's commit");
+  ctx.status = 302;
+  ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
+})
+
+
+function getBranchFromCommit(commit, mapping) {
+  for (let [branch, mappedCommit] of Object.entries(mapping)) {
+    if (mappedCommit === commit) {
+      return branch;
+    }
+  }
+  return undefined;
+}
+
+api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, next) => {
   //Log.debug("Received DDF query");
 
   let json, ddfQuery;
-  let version = ctx.params.version;
-  let datasetSlug = ctx.params.dataset;
-  Log.debug({ version, datasetSlug });
+  let datasetSlug = ctx.params.datasetSlug;
+  let branchOrCommit = ctx.params.branchOrCommit;
+  Log.debug({ datasetSlug, branchOrCommit });
 
-  // TODO: check if version is a commit-sha or a branch... if branch, redirect
-  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug]
+  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+  const queryString = ctx.querystring; // Get the original query string
 
-  if (version) {
-    if (branchCommitMapping[version]) {
-      const commit = branchCommitMapping.get(version);
-      // TODO: Redirect because version was a branch
-    }
+  let branch;
+  let commit;
+
+  // Check if version is a commit-sha or a branch... if branch, redirect
+  if (branchCommitMapping[branchOrCommit]) {
+    const commit = branchCommitMapping[branchOrCommit];
+    console.info("Redirecting because branchOrCommit was a branch");
+    ctx.status = 302;
+    ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
+    return;
   } else {
-    const commit = branchCommitMapping["master"];
-    // TOOD: Redirect to default branch's commit
+    commit = branchOrCommit;
+    branch = getBranchFromCommit(commit, branchCommitMapping)
   }
 
   try {
@@ -132,7 +153,13 @@ api.get("/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)", async (ctx, next) => {
   }
 
   try {
-    const readerInstance = datasetVersionReaderInstances[datasetSlug][version];
+    const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
+    if (!readerInstance) {
+      ctx.throw(
+        500,
+        `No data loaded for ${datasetSlug}/${branch}`,
+      );
+    }
     const data = await readerInstance.read(ddfQuery);
     ctx.body = data;
   } catch (err) {

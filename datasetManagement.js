@@ -106,4 +106,5 @@ export async function loadAllAllowedDatasets() {
     const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, rootPath, false);
     await loadDataset(dataset, branchCommitMapping);
   }
+  console.info("Loading complete...")
 }
