@@ -52,10 +52,16 @@ export const datasetVersionReaderInstances = {
   },
 }
 
-export const datasetBranchCommitMapping = {
-  'slug-dummy': {
-    'branch-dummy': 'commit-sha-dummy'
-  },
+export const datasetBranchCommitMapping = {}
+
+export function getBranchFromCommit(datasetSlug, commit) {
+  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+  for (let [branch, mappedCommit] of Object.entries(branchCommitMapping)) {
+    if (mappedCommit === commit) {
+      return branch;
+    }
+  }
+  return undefined;
 }
 
 
@@ -71,9 +77,8 @@ export async function syncDataset(datasetSlug) {
 
   // check github for branch<->commit mappings
   const repoUrl = repoUrlTemplate(dataset.id)
-  const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, rootPath);
-
-  await loadDataset(branchCommitMapping)
+  const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, rootPath, true);
+  await loadDataset(dataset, branchCommitMapping)
 }
 
 export async function loadDataset(dataset, branchCommitMapping) {

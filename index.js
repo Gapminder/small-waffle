@@ -6,6 +6,7 @@ import {
   datasetBranchCommitMapping,
   datasetVersionReaderInstances,
   loadAllAllowedDatasets,
+  getBranchFromCommit,
   syncDataset
 } from "./datasetManagement.js";
 const app = new Koa();
@@ -30,19 +31,17 @@ api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
   let datasetSlug = ctx.params.dataset;
   if (!datasetSlug) {
     Log.debug("Received a list all (public) datasets request");
-    ctx.body = "Welcome to small waffle! " + (datasets.length ? "Available datasets are: " + datasets.map(m => m.slug).join(", ") : "No datasets on the server");
+    ctx.body = Object.keys(datasetBranchCommitMapping).length ? JSON.stringify(datasetBranchCommitMapping) : "No datasets on the server";
   } else {
-    const dataset = datasets.find(f => f.slug === datasetSlug);
-    if (!dataset) ctx.body = "Dataset not found: " + datasetSlug;
-    if (dataset) ctx.body = "Dataset found: " + datasetSlug;
+    ctx.body = datasetBranchCommitMapping[datasetSlug] || {[datasetSlug]: "Dataset not found"};
   }
 });
 
-api.get("/sync/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
+api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
   /*
    * Sync the dataset metadata and files between disk, memory and GitHub
    */
-  let datasetSlug = ctx.params.dataset;
+  let datasetSlug = ctx.params.datasetSlug;
   const foo = await syncDataset(datasetSlug);
   ctx.body = {status: 'synced', "foo": foo, "bar": "zoo"}
 });
@@ -92,15 +91,6 @@ api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
   ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
 })
 
-
-function getBranchFromCommit(commit, mapping) {
-  for (let [branch, mappedCommit] of Object.entries(mapping)) {
-    if (mappedCommit === commit) {
-      return branch;
-    }
-  }
-  return undefined;
-}
 
 api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, next) => {
   //Log.debug("Received DDF query");

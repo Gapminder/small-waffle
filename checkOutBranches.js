@@ -7,8 +7,7 @@ const Log = console;
 
 export async function ensureRepoIsCheckedOut(branchPath, branchName, repoUrl) {
   Log.info(`Ensuring the directory for branch ${branchName} exists`);
-  const files = fs.readdirSync(branchPath)
-  if (!fs.existsSync(branchPath) || !files.includes("datapackage.json")) {
+  if (!fs.existsSync(branchPath) || !fs.readdirSync(branchPath).includes("datapackage.json")) {
     fs.mkdirSync(branchPath, { recursive: true });
     Log.info(`Cloning the repository for branch ${branchName}`);
     await git.clone({ fs, http, dir: branchPath, url: repoUrl, ref: branchName, singleBranch: true, depth: 1 });
