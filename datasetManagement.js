@@ -64,16 +64,20 @@ export function getBranchFromCommit(datasetSlug, commit) {
   return undefined;
 }
 
+export function getDatasetFromSlug(datasetSlug) {
+  const dataset = allowedDatasets.find(f => f.slug === datasetSlug);
+  if (!dataset) {
+    throw new Error(`Query error: Dataset not allowed: ${datasetSlug}`);
+  }
+  return dataset;
+}
 
 
 export async function syncDataset(datasetSlug) {
 
   Log.info(`Syncing dataset with slug ${datasetSlug}`);
 
-  const dataset = allowedDatasets.find(f => f.slug === datasetSlug);
-  if (!dataset) {
-    throw new Error(`Query error: Dataset not allowed: ${datasetSlug}`);
-  }
+  const dataset = getDatasetFromSlug(datasetSlug);
 
   // check github for branch<->commit mappings
   const repoUrl = repoUrlTemplate(dataset.id)

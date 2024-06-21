@@ -2,11 +2,13 @@ import Koa from "koa";
 import Router from "koa-router";
 import serve from "koa-static";
 import Urlon from "urlon";
+import * as path from 'path';
 import {
   datasetBranchCommitMapping,
   datasetVersionReaderInstances,
   loadAllAllowedDatasets,
   getBranchFromCommit,
+  getDatasetFromSlug,
   syncDataset
 } from "./datasetManagement.js";
 const app = new Koa();
@@ -15,14 +17,6 @@ const api = new Router(); // routes for the main API
 const Log = console;
 
 loadAllAllowedDatasets()
-
-api.get("/ddf-service-directory", (ctx, next) => {
-  ctx.body = {
-    list: "/",
-    query: "/DATASET/VERSION",
-    assets: "DATASET/VERSION/assets/ASSET",
-  };
-});
 
 api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
   /*
@@ -46,54 +40,64 @@ api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
   ctx.body = {status: 'synced', "foo": foo, "bar": "zoo"}
 });
 
-api.get(
-  "/:dataset([-a-z_0-9]+)/:version([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)",
-  async (ctx, next) => {
-    try {
-      Log.debug("Received asset query");
-      //const dataset = await Dataset.open(ctx.params.dataset, ctx.params.version, true)
-
-      let version = ctx.params.version;
-      let datasetSlug = ctx.params.dataset;
-
-      const dataset = datasets.find(f => f.slug === datasetSlug);
-      if (!dataset) Log.error("Query error: Dataset not found:", datasetSlug);
-
-      //if (!ctx.params.version) {
-      //  ctx.redirect(`/${dataset.name}/${dataset.version}/assets/${ctx.params.asset}`)
-      //} else {
-        
-        //ctx.status = 301 // Permanent redirect!
-        //ctx.redirect(rootPath + "/" + dataset.id + "/assets/" + ctx.params.asset);
-
-        const path = rootPath + "/" + dataset.id + "/assets/" + ctx.params.asset;
-        app.use(serve(path));
-      //}
-    } catch (err) {
-      if (err.code === 'DDF_DATASET_NOT_FOUND') {
-        ctx.throw(404, err.message)
-      } else {
-        Log.error(err)
-      }
-      ctx.throw(500, `Sorry, the DDF Service seems to have a problem, try again later`)
-    }
-  },
-);
-
 api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
   let datasetSlug = ctx.params.datasetSlug;
   const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
   const queryString = ctx.querystring; // Get the original query string
 
   const commit = branchCommitMapping["master"];
-  Log.info("Redirecting to default branch's commit");
+  Log.info("Redirecting to default branch's commit, generic case");
   ctx.status = 302;
   ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
 })
 
+api.get("/:datasetSlug([-a-z_0-9]+)/assets/:asset([-a-z_0-9.]+)", async (ctx, next) => {
+  let datasetSlug = ctx.params.datasetSlug;
+  let asset = ctx.params.asset;
+  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+
+  const commit = branchCommitMapping["master"];
+  Log.info("Redirecting to default branch's commit, asset case");
+  ctx.status = 302;
+  ctx.redirect(`/${datasetSlug}/${commit}/assets/${asset}`);
+})
+
+api.get(
+  "/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)/assets/:asset([-a-z_0-9.]+)",
+  async (ctx, next) => {
+    try {
+      Log.debug("Received asset query");
+      
+      const branchOrCommit = ctx.params.branchOrCommit;
+      const datasetSlug = ctx.params.datasetSlug;
+      const asset = ctx.params.asset;
+      
+      const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+      if (branchCommitMapping) {
+        const commit = branchOrCommit;
+        const branch = getBranchFromCommit(datasetSlug, commit);
+        const dataset = getDatasetFromSlug(datasetSlug);
+
+        const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
+        Log.info("Computed asset path:", assetPath);
+
+        ctx.status = 302;
+        ctx.redirect(assetPath);
+        
+      } else {
+        ctx.body = {[datasetSlug]: "Dataset not found"};
+      }
+
+
+    } catch (err) {
+      ctx.throw(500, `Sorry, the DDF Service seems to have a problem, try again later`)
+    }
+  },
+);
+
 
 api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, next) => {
-  //Log.debug("Received DDF query");
+  Log.info("Received DDF query");
 
   let json, ddfQuery;
   let datasetSlug = ctx.params.datasetSlug;
@@ -162,5 +166,6 @@ api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, n
 
 });
 
+app.use(serve('datasets'));
 app.use(api.routes());
 app.listen(port);
