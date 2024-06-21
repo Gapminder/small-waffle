@@ -46,7 +46,11 @@ export async function getRepoBranchCommitMapping(datasetId, rootPath, remote = f
 
       for (const branch of branches) {
         const branchName = `${branch}`;
-        const commitOid = await git.resolveRef({fs, dir, ref: branchName});
+
+        const branchPath = path.join(rootPath, datasetId, branchName);
+        await ensureRepoIsCheckedOut(branchPath, branchName, repoUrl);
+
+        const commitOid = await git.resolveRef({fs, dir: branchPath, ref: branchName});
         repoInfo[branch] = commitOid;
       }
 

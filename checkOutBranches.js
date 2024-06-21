@@ -10,7 +10,9 @@ export async function ensureRepoIsCheckedOut(branchPath, branchName, repoUrl) {
   if (!fs.existsSync(branchPath) || !fs.readdirSync(branchPath).includes("datapackage.json")) {
     fs.mkdirSync(branchPath, { recursive: true });
     Log.info(`Cloning the repository for branch ${branchName}`);
-    await git.clone({ fs, http, dir: branchPath, url: repoUrl, ref: branchName, singleBranch: true, depth: 1 });
+
+    //clone all branches for master to be able to find out what branches are available
+    await git.clone({ fs, http, dir: branchPath, url: repoUrl, ref: branchName, singleBranch: branchName !== "master", depth: 1 });
   }
 }
 
