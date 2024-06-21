@@ -58,7 +58,7 @@ api.get(
       let datasetSlug = ctx.params.dataset;
 
       const dataset = datasets.find(f => f.slug === datasetSlug);
-      if (!dataset) console.error("Query error: Dataset not found:", datasetSlug);
+      if (!dataset) Log.error("Query error: Dataset not found:", datasetSlug);
 
       //if (!ctx.params.version) {
       //  ctx.redirect(`/${dataset.name}/${dataset.version}/assets/${ctx.params.asset}`)
@@ -87,7 +87,7 @@ api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
   const queryString = ctx.querystring; // Get the original query string
 
   const commit = branchCommitMapping["master"];
-  console.info("Redirecting to default branch's commit");
+  Log.info("Redirecting to default branch's commit");
   ctx.status = 302;
   ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
 })
@@ -119,24 +119,24 @@ api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, n
   // Check if version is a commit-sha or a branch... if branch, redirect
   if (branchCommitMapping[branchOrCommit]) {
     const commit = branchCommitMapping[branchOrCommit];
-    console.info("Redirecting because branchOrCommit was a branch");
+    Log.info("Redirecting because branchOrCommit was a branch");
     ctx.status = 302;
     ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
     return;
   } else {
     commit = branchOrCommit;
-    branch = getBranchFromCommit(commit, branchCommitMapping)
+    branch = getBranchFromCommit(datasetSlug, commit)
   }
 
   try {
     if (!(typeof ctx.querystring === "string" && ctx.querystring.length > 10)) {
       throw new Error("Request has no query");
     }
-   // console.debug("ctx.querystring", ctx.querystring);
+   // Log.debug("ctx.querystring", ctx.querystring);
     try {
       json = Urlon.parse(decodeURIComponent(ctx.querystring)); // despite using urlon we still need to decode!
     } catch (urlonError) {
-      //console.error(urlonError);
+      //Log.error(urlonError);
       json = JSON.parse(decodeURIComponent(ctx.querystring));
     }
     ddfQuery = json;
@@ -163,7 +163,7 @@ api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, n
     const data = await readerInstance.read(ddfQuery);
     ctx.body = data;
   } catch (err) {
-    console.error(err, err.stack)
+    Log.error(err, err.stack)
     ctx.throw(
       500,
       err.message,

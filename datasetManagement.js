@@ -6,6 +6,7 @@ import {resultTransformer} from "./resultTransformer.js";
 import {getRepoBranchCommitMapping} from "./getRepoBranchCommitMapping.js";
 import {checkOutBranches} from "./checkOutBranches.js";
 import {repoUrlTemplate} from "./repoUrlTemplate.js";
+const Log = console;
 
 const rootPath = path.resolve("./datasets/");
 
@@ -61,7 +62,7 @@ export const datasetBranchCommitMapping = {
 
 export async function syncDataset(datasetSlug) {
 
-  console.info(`Syncing dataset with slug ${datasetSlug}`);
+  Log.info(`Syncing dataset with slug ${datasetSlug}`);
 
   const dataset = allowedDatasets.find(f => f.slug === datasetSlug);
   if (!dataset) {
@@ -81,9 +82,9 @@ export async function loadDataset(dataset, branchCommitMapping) {
   // make sure all branches are checked out locally
   try {
     await checkOutBranches(branchCommitMapping, dataset.id, rootPath)
-    console.log('Branches checked out successfully.');
+    Log.info('Branches checked out successfully.');
   } catch (err) {
-    console.error('Error checking out branches:', err);
+    Log.error('Error checking out branches:', err);
   }
 
   // load reader instances
@@ -95,16 +96,16 @@ export async function loadDataset(dataset, branchCommitMapping) {
       path: branchPath,
       resultTransformer,
     });
-    console.info(`Created a reader instance for ${dataset.slug}/${branchName}`)
+    Log.info(`Created a reader instance for ${dataset.slug}/${branchName}`)
     datasetVersionReaderInstances[dataset.slug][branchName] = readerInstance
   }
 }
 
 export async function loadAllAllowedDatasets() {
   for (const dataset of allowedDatasets) {
-    console.log(`=== Loading dataset ${dataset.slug} (${dataset.id}) ===`)
+    Log.info(`=== Loading dataset ${dataset.slug} (${dataset.id}) ===`)
     const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, rootPath, false);
     await loadDataset(dataset, branchCommitMapping);
   }
-  console.info("Loading complete...")
+  Log.info("Loading complete...")
 }
