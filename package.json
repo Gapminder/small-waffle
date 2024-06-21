@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@vizabi/reader-ddfcsv": "^4.3.2",
+    "@vizabi/reader-ddfcsv": "^4.3.3",
     "isomorphic-git": "^1.25.10",
     "itty-router": "^5.0.17",
     "koa": "^2.15.3",
