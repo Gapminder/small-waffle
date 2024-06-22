@@ -6,19 +6,11 @@ import {resultTransformer} from "./resultTransformer.js";
 import {getRepoBranchCommitMapping} from "./getRepoBranchCommitMapping.js";
 import {checkOutBranches} from "./checkOutBranches.js";
 import {repoUrlTemplate} from "./repoUrlTemplate.js";
+import { updateAllowedDatasets, allowedDatasets } from "./allowedDatasets.js";
 const Log = console;
 
 const rootPath = path.resolve("./datasets/");
 
-const allowedDatasets = [
-  {slug: "fasttrack", id: "open-numbers/ddf--gapminder--fasttrack"},
-  {slug: "billy-master", id: "open-numbers/ddf--gapminder--billionaires"},
-  {slug: "povcalnet-master", id: "open-numbers/ddf--worldbank--povcalnet"},
-  {slug: "sg-master", id: "open-numbers/ddf--gapminder--systema_globalis"},
-  {slug: "population-master", id: "open-numbers/ddf--gapminder--population"},
-  {slug: "wdi-master", id: "open-numbers/ddf--open_numbers--world_development_indicators"},
-  {slug: "country-flags", id: "open-numbers/ddf--gapminder--country_flag_svg"},
-];
 
 function syncAll() {
 
@@ -111,6 +103,9 @@ export async function loadDataset(dataset, branchCommitMapping) {
 }
 
 export async function loadAllAllowedDatasets() {
+  await updateAllowedDatasets();
+  Log.info(`Got info about ${allowedDatasets.length} datasets: ${allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : ""}`);
+
   for (const dataset of allowedDatasets) {
     Log.info(`=== Loading dataset ${dataset.slug} (${dataset.id}) ===`)
     const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, rootPath, false);

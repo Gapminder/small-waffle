@@ -11,6 +11,9 @@ import {
   getDatasetFromSlug,
   syncDataset
 } from "./datasetManagement.js";
+
+import { allowedDatasets } from "./allowedDatasets.js";
+
 const app = new Koa();
 const port = 3333;
 const api = new Router(); // routes for the main API
@@ -25,7 +28,10 @@ api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
   let datasetSlug = ctx.params.dataset;
   if (!datasetSlug) {
     Log.debug("Received a list all (public) datasets request");
-    ctx.body = Object.keys(datasetBranchCommitMapping).length ? JSON.stringify(datasetBranchCommitMapping) : "No datasets on the server";
+    ctx.body = JSON.stringify({
+      allowedDatasets,
+      availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
+    })
   } else {
     ctx.body = datasetBranchCommitMapping[datasetSlug] || {[datasetSlug]: "Dataset not found"};
   }
