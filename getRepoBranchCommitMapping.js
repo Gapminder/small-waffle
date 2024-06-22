@@ -14,13 +14,11 @@ async function fetchLatestCommit(datasetId, branch, token) {
     throw new Error(`Failed to fetch commit for branch ${branch}: ${response.statusText}`);
 
   const commitData = await response.json();
-  return {branch, commit: commitData.sha};
+  return [branch, commitData.sha.substring(0,7)];
 }
 
 export async function getRepoBranchCommitMapping(datasetId, branches) {
   const promises = branches.map(branch => fetchLatestCommit(datasetId, branch, githubToken));
-  const result = {};
   const array = await Promise.all(promises);
-  array.forEach(e => result[e.branch] = e.commit)
-  return result;
+  return Object.fromEntries(array);
 }

@@ -47,7 +47,7 @@ async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit)
   const branchPath = path.join(rootPath, datasetId, branchName);
   const currentCommit = await git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null);
 
-  if (currentCommit !== latestCommit) {
+  if (currentCommit.substring(0,7) !== latestCommit.substring(0,7)) {
     Log.info(`Fetching the latest updates for branch ${branchName}`);
     await git.fetch({ fs, http, dir: branchPath, ref: branchName });
 
