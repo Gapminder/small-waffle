@@ -22,7 +22,10 @@ export async function updateAllowedDatasets() {
   return new Promise((resolve, reject) => {
     response.body
       .pipe(csv())
-      .on('data', (row) => allowedDatasets.push(row))
+      .on('data', (row) => {
+        row.branches = row.branches.split(",").map(m => m.trim());
+        allowedDatasets.push(row);
+      })
       .on('end', () => resolve(allowedDatasets))
       .on('error', (err) => reject(err));
   });

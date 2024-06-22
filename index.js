@@ -6,7 +6,7 @@ import * as path from 'path';
 import {
   datasetBranchCommitMapping,
   datasetVersionReaderInstances,
-  loadAllAllowedDatasets,
+  syncAllDatasets,
   getBranchFromCommit,
   getDatasetFromSlug,
   syncDataset
@@ -19,7 +19,7 @@ const port = 3333;
 const api = new Router(); // routes for the main API
 const Log = console;
 
-loadAllAllowedDatasets()
+syncAllDatasets()
 
 api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
   /*
@@ -42,8 +42,14 @@ api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
    * Sync the dataset metadata and files between disk, memory and GitHub
    */
   let datasetSlug = ctx.params.datasetSlug;
-  const foo = await syncDataset(datasetSlug);
-  ctx.body = {status: 'synced', "foo": foo, "bar": "zoo"}
+  let result = "";
+  if(!datasetSlug){
+    result = await syncAllDatasets();
+  } else {
+    result = await syncDataset(datasetSlug);
+  }
+  ctx.body = {status: result};
+
 });
 
 api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
@@ -52,7 +58,7 @@ api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
   const queryString = ctx.querystring; // Get the original query string
 
   const commit = branchCommitMapping["master"];
-  Log.info("Redirecting to default branch's commit, generic case");
+  //Log.info("Redirecting to default branch's commit, generic case");
   ctx.status = 302;
   ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
 })
@@ -103,12 +109,11 @@ api.get(
 
 
 api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, next) => {
-  Log.info("Received DDF query");
+  //Log.info("Received DDF query");
 
   let json, ddfQuery;
   let datasetSlug = ctx.params.datasetSlug;
   let branchOrCommit = ctx.params.branchOrCommit;
-  Log.debug({ datasetSlug, branchOrCommit });
 
   const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
   const queryString = ctx.querystring; // Get the original query string

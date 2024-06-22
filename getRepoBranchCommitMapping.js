@@ -1,64 +1,26 @@
-import * as git from 'isomorphic-git';
-import http from 'isomorphic-git/http/node/index.cjs';
-import fs from 'fs';
-import path from 'path';
-import {ensureRepoIsCheckedOut} from "./checkOutBranches.js";
-import {repoUrlTemplate} from "./repoUrlTemplate.js";
-const Log = console;
+import fetch from 'node-fetch';
+import dotenv from 'dotenv';
 
-export async function getRepoBranchCommitMapping(datasetId, rootPath, remote = false) {
-  const repoInfo = {};
+dotenv.config();
+const githubToken = process.env.GITHUB_TOKEN;
 
-  const repoUrl = repoUrlTemplate(datasetId);
-  const masterBranchPath = path.join(rootPath, datasetId, "master");
-  await ensureRepoIsCheckedOut(masterBranchPath, "master", repoUrl);
-  const dir = masterBranchPath;
+async function fetchLatestCommit(datasetId, branch, token) {
+  const url = `https://api.github.com/repos/${datasetId}/commits/${branch}`;
+  const headers = token ? { Authorization: `token ${token}` } : {};
 
-  try {
-    Log.info('Adding the remote repository');
-    await git.addRemote({fs, dir, remote: 'origin', url: repoUrl, force: true});
+  const response = await fetch(url, { headers });
 
-    if (remote) {
-      Log.info('Fetching remote repository information');
-      await git.fetch({fs, http, dir, remote: 'origin'});
-    }
+  if (!response.ok)
+    throw new Error(`Failed to fetch commit for branch ${branch}: ${response.statusText}`);
 
-    Log.info('Listing all branches');
-    const branchesInclHead = await git.listBranches({fs, dir, remote: 'origin'})
-    const branches = branchesInclHead.filter(branch => branch !== "HEAD");
-    Log.info('Branches:', branches);
+  const commitData = await response.json();
+  return {branch, commit: commitData.sha};
+}
 
-    if (remote) {
-
-      Log.info('Getting commits for each branch');
-      for (const branch of branches) {
-        const branchName = `origin/${branch}`;
-        try {
-          const commits = await git.log({fs, dir, ref: branchName});
-          repoInfo[branch] = commits[0].oid;
-          Log.info(`Most recent commit for branch ${branch}:`, commits[0]);
-        } catch (error) {
-          Log.error(`Error fetching commits for branch ${branch}:`, error);
-        }
-      }
-
-    } else {
-
-      for (const branch of branches) {
-        const branchName = `${branch}`;
-
-        const branchPath = path.join(rootPath, datasetId, branchName);
-        await ensureRepoIsCheckedOut(branchPath, branchName, repoUrl);
-
-        const commitOid = await git.resolveRef({fs, dir: branchPath, ref: branchName});
-        repoInfo[branch] = commitOid;
-      }
-
-    }
-
-  } catch (error) {
-    Log.error('Error:', error);
-  }
-
-  return repoInfo;
+export async function getRepoBranchCommitMapping(datasetId, branches) {
+  const promises = branches.map(branch => fetchLatestCommit(datasetId, branch, githubToken));
+  const result = {};
+  const array = await Promise.all(promises);
+  array.forEach(e => result[e.branch] = e.commit)
+  return result;
 }
