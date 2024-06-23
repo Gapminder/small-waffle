@@ -8,24 +8,56 @@ const repoUrlTemplate = (datasetId) => `https://github.com/${datasetId}`
 
 export async function updateFilesOnDisk(rootPath, datasetId, branchCommitMapping) {
 
-  cleanupDirectories(rootPath, datasetId, branchCommitMapping);
-
   for (const [branchName, latestCommit] of Object.entries(branchCommitMapping)) {
     await ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branchName);
     await ensureLatestCommit(rootPath, datasetId, branchName, latestCommit);
   }
 }
 
-function cleanupDirectories(rootPath, datasetId, branchCommitMapping) {
-  Log.info(`Cleaning up directories for ${datasetId}`)
+export function cleanupAllDirectories(rootPath, allowedDatasets) {
+  Log.info(`Cleaning up directories for all datasets`)
+  if (!fs.existsSync(rootPath)) throw new Error(`Root path is not available: ${rootPath}`)
 
-  const datasetPath = path.join(rootPath, datasetId);
-  if (fs.existsSync(datasetPath)) {
-    for (let dir of fs.readdirSync(datasetPath)){
-      if( !Object.keys(branchCommitMapping).includes(dir) ) {
-        Log.info(`Removing ${dir} of ${datasetId}`);
-        fs.rmSync(path.join(rootPath, datasetId, dir), { recursive: true, force: true });
+  const datasetsWithOwners = allowedDatasets.map(m => ({
+    ...m, 
+    owner: m.id.split("/")[0],
+    dataset: m.id.split("/")[1]
+  }));
+
+  const ownerFoldersToKeep = new Set(datasetsWithOwners.map(m => m.owner));
+  const datasetFoldersToKeep = datasetsWithOwners.reduce((acc, d) => { 
+    if (!acc[d.owner]) acc[d.owner] = new Set();
+    acc[d.owner].add(d.dataset);
+    return acc;
+  }, {})
+
+  const branchFoldersToKeep = datasetsWithOwners.reduce((acc, d) => { 
+    if (!acc[d.id]) acc[d.id] = new Set();
+    d.branches.forEach(branch => acc[d.id].add(branch));
+    return acc;
+  }, {})
+
+  for (let ownerDir of fs.readdirSync(rootPath)) {
+    if (ownerFoldersToKeep.has(ownerDir)) {
+      // check datasets
+      for (let datasetDir of fs.readdirSync(path.join(rootPath, ownerDir))) {
+    
+        if (datasetFoldersToKeep[ownerDir].has(datasetDir)) {
+          // check branches
+          for (let branchDir of fs.readdirSync(path.join(rootPath, ownerDir, datasetDir))) {
+            if (!branchFoldersToKeep[ownerDir + "/" + datasetDir].has(branchDir)) {
+              Log.info(`🗑 Removing branch ${branchDir} of dataset ${datasetDir}`)
+              fs.rmSync(path.join(rootPath, ownerDir, datasetDir, branchDir), { recursive: true, force: true });
+            }
+          }
+        } else {
+          Log.info(`🗑 Removing dataset and all its branches: ${datasetDir}`);
+          fs.rmSync(path.join(rootPath, ownerDir, datasetDir), { recursive: true, force: true });
+        }
       }
+    } else {
+      Log.info(`🗑 Removing owner and all its datasets: ${ownerDir}`);
+      fs.rmSync(path.join(rootPath, ownerDir), { recursive: true, force: true });
     }
   }
 }

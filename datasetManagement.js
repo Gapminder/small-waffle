@@ -2,7 +2,7 @@ import * as path from 'path';
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import {resultTransformer} from "./resultTransformer.js";
 import {getRepoBranchCommitMapping} from "./getRepoBranchCommitMapping.js";
-import {updateFilesOnDisk} from "./updateFilesOnDisk.js";
+import {updateFilesOnDisk, cleanupAllDirectories} from "./updateFilesOnDisk.js";
 import { updateAllowedDatasets, allowedDatasets } from "./allowedDatasets.js";
 const Log = console;
 
@@ -57,6 +57,8 @@ export async function syncAllDatasets() {
   await updateAllowedDatasets();
   const datasetListString = allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : "";
   Log.info(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
+
+  cleanupAllDirectories(rootPath, allowedDatasets);
 
   for (const dataset of allowedDatasets)
     await syncDataset(dataset.slug);
