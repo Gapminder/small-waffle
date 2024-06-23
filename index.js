@@ -9,6 +9,7 @@ import {
   syncAllDatasets,
   getBranchFromCommit,
   getDatasetFromSlug,
+  getDefaultCommit,
   syncDataset
 } from "./datasetManagement.js";
 
@@ -53,22 +54,20 @@ api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
 });
 
 api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
-  let datasetSlug = ctx.params.datasetSlug;
-  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+  const datasetSlug = ctx.params.datasetSlug;
   const queryString = ctx.querystring; // Get the original query string
 
-  const commit = branchCommitMapping["master"];
+  const commit = getDefaultCommit(datasetSlug);
   //Log.info("Redirecting to default branch's commit, generic case");
   ctx.status = 302;
   ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
 })
 
 api.get("/:datasetSlug([-a-z_0-9]+)/assets/:asset([-a-z_0-9.]+)", async (ctx, next) => {
-  let datasetSlug = ctx.params.datasetSlug;
-  let asset = ctx.params.asset;
-  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+  const datasetSlug = ctx.params.datasetSlug;
+  const asset = ctx.params.asset;
 
-  const commit = branchCommitMapping["master"];
+  const commit = getDefaultCommit(datasetSlug);
   Log.info("Redirecting to default branch's commit, asset case");
   ctx.status = 302;
   ctx.redirect(`/${datasetSlug}/${commit}/assets/${asset}`);

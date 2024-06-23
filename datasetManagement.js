@@ -46,9 +46,11 @@ export function getDatasetFromSlug(datasetSlug) {
   return dataset;
 }
 
-
-
-
+export function getDefaultCommit(datasetSlug){
+  const dataset = getDatasetFromSlug(datasetSlug);
+  const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+  return branchCommitMapping[ dataset.branches[0] ];
+}
 
 
 export async function syncAllDatasets() {
