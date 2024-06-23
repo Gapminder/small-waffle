@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "nodemon index.js --ignore datasets/",
-    "start:prod": "pm2 start index.js --name small-waffle --update-env",
+    "serve": "pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "echo 'No build step required for serverless functions'"
   },
