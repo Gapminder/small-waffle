@@ -14,7 +14,7 @@ async function fetchLatestCommit(datasetId, branch, token) {
     throw new Error(`Failed to fetch commit for branch ${branch}: ${response.statusText}`);
 
   const commitData = await response.json();
-  return [branch, commitData.sha.substring(0,7)];
+  return [branch, commitData.sha];
 }
 
 export async function getRepoBranchCommitMapping(datasetId, branches) {

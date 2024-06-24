@@ -75,20 +75,17 @@ export async function ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branc
 
 async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit) {
   Log.info(`Checking if the branch ${branchName} is referencing the latest commit`);
-    
+
   const branchPath = path.join(rootPath, datasetId, branchName);
   const currentCommit = await git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null);
 
-  if (currentCommit.substring(0,7) !== latestCommit.substring(0,7)) {
+  if (currentCommit !== latestCommit) {
     Log.info(`Fetching the latest updates for branch ${branchName}`);
     await git.fetch({ fs, http, dir: branchPath, ref: branchName });
 
-    Log.info(`Checking out the branch ${branchName}`);
-    await git.checkout({ fs, dir: branchPath, ref: branchName, force: true });
-
-    Log.info(`Resetting to the latest commit for branch ${branchName}`);
-    await git.resetIndex({ fs, dir: branchPath, ref: latestCommit, hard: true });
+    Log.info(`Checking out the latest commit for branch ${branchName}`);
+    await git.checkout({ fs, dir: branchPath, ref: latestCommit, force: true });
   } else {
-    Log.info("The checked out files are the ones from the latest commit")
+    Log.info("The checked out files are the ones from the latest commit");
   }
 }
