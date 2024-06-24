@@ -1,6 +1,7 @@
 import Koa from "koa";
 import Router from "koa-router";
 import serve from "koa-static";
+import compress from "koa-compress";
 import Urlon from "urlon";
 import * as path from 'path';
 import {
@@ -176,6 +177,7 @@ api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, n
 
 });
 
+app.use(compress());
 app.use(serve('datasets'));
 app.use(api.routes());
 app.listen(port);
