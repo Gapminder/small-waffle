@@ -5,8 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon index.js --ignore datasets/",
-    "serve": "pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log",
+    "start": "export PORT=4444 && nodemon index.js --ignore datasets/",
+    "serve": "export PORT=3333 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "echo 'No build step required for serverless functions'"
   },
