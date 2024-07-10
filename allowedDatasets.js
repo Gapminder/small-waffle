@@ -8,7 +8,7 @@ export let allowedDatasets = [];
 //   {slug: "billy-master", id: "open-numbers/ddf--gapminder--billionaires"},
 // ]
 
-const spreadsheetId = '1aoczZXGkjHvHvBgxjZgx56KCqFpF3QggH_3Mb__6Jfg';
+const spreadsheetId = process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_ID;
 const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
 
 export async function updateAllowedDatasets() {
