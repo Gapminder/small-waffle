@@ -16,7 +16,10 @@ export async function updateFilesOnDisk(rootPath, datasetId, branchCommitMapping
 
 export function cleanupAllDirectories(rootPath, allowedDatasets) {
   Log.info(`Cleaning up directories for all datasets`)
-  if (!fs.existsSync(rootPath)) throw new Error(`Root path is not available: ${rootPath}`)
+  if (!fs.existsSync(rootPath)) {
+    Log.info(`Root path not found, creating one: ${rootPath}`);
+    fs.mkdirSync(rootPath, { recursive: true });
+  } 
 
   const datasetsWithOwners = allowedDatasets.map(m => ({
     ...m, 
