@@ -21,6 +21,7 @@ export function initRoutes(api) {
 
   api.get("/events", async (ctx, next) => {
     Log.debug("Received a request to list all events");
+    ctx.status = 203; //not cached through cloudflare page rule
     ctx.body = JSON.stringify(retrieveEvents());
   });
 
@@ -41,6 +42,7 @@ export function initRoutes(api) {
         throw new Error(DDFCsvReaderVersion);
       }
 
+      ctx.status = 203; //not cached through cloudflare page rule
       ctx.body = JSON.stringify({
         server: {
           name: "small-waffle",
@@ -51,6 +53,7 @@ export function initRoutes(api) {
         availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
       })
     } else {
+      ctx.status = 203; //not cached through cloudflare page rule
       ctx.body = datasetBranchCommitMapping[datasetSlug] || {[datasetSlug]: "Dataset not found"};
     }
   });
@@ -68,6 +71,7 @@ export function initRoutes(api) {
       Log.info("Received a request to sync dataset: " + datasetSlug);
       result = await syncDataset(datasetSlug);
     }
+    ctx.status = 203; //not cached through cloudflare page rule
     ctx.body = {status: result};
   
   });
@@ -79,9 +83,9 @@ export function initRoutes(api) {
     const commit = getDefaultCommit(datasetSlug);
     //Log.info("Redirecting to default branch's commit, generic case");
     if (commit === false) {
-      ctx.status = 403; //forbidden
-      Log.info("403 Dataset not on allow list: " + datasetSlug);
+      Log.error("403 Dataset not on allow list: " + datasetSlug);
       recordEvent(`${datasetSlug}`, {type: "query", status: "403", comment: "Dataset not on allow list", queryString});
+      ctx.throw(403, `Forbidden`)
     } else {
       ctx.status = 302;
       ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
@@ -95,9 +99,9 @@ export function initRoutes(api) {
     const commit = getDefaultCommit(datasetSlug);
     //Log.info("Redirecting to default branch's commit, asset case");
     if (commit === false) {
-      ctx.status = 403; //forbidden
-      Log.info("403 Dataset not on allow list: " + datasetSlug);
+      Log.error("403 Dataset not on allow list: " + datasetSlug);
       recordEvent(`${datasetSlug}/assets/${asset}`, {type: "asset", status: "403", comment: "Dataset not on allow list", queryString});
+      ctx.throw(403, `Forbidden`)
     } else {
       ctx.status = 302;
       ctx.redirect(`/${datasetSlug}/${commit}/assets/${asset}`);
@@ -128,7 +132,7 @@ export function initRoutes(api) {
           ctx.redirect(assetPath);
           
         } else {
-          Log.info("404 Dataset not found: ", datasetSlug);
+          Log.error("404 Dataset not found: ", datasetSlug);
           recordEvent(`${datasetSlug}/${branchOrCommit}/assets/${asset}`, {type: "asset", status: "404", datasetSlug});
           
           ctx.status = 404;
@@ -158,6 +162,12 @@ export function initRoutes(api) {
   
     let branch;
     let commit;
+
+    if (!branchCommitMapping) {
+      Log.error(`404 Dataset not found: ${datasetSlug}/${branchOrCommit}`);
+      ctx.throw(404, "Not found");
+      return;
+    }
   
     // Check if version is a commit-sha or a branch... if branch, redirect
     if (branchCommitMapping[branchOrCommit]) {
@@ -187,7 +197,7 @@ export function initRoutes(api) {
     } catch (err) {
       // malformed queries get logged, but don't raise errors/alarms
       recordEvent(`${datasetSlug}/${branchOrCommit}?${queryString}`, {type: "query", status: "400", comment: "Query error", datasetSlug, branch, commit});
-      Log.info(json ? { ddfQuery: json, req: ctx.request, err } : err);
+      Log.error(json ? { ddfQuery: json, req: ctx.request, err } : err);
       ctx.throw(
         400,
         err instanceof SyntaxError
