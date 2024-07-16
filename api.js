@@ -21,7 +21,7 @@ export function initRoutes(api) {
 
   api.get("/events", async (ctx, next) => {
     Log.debug("Received a request to list all events");
-    ctx.status = 203; //not cached through cloudflare page rule
+    ctx.status = 200; //not cached through cloudflare cache rule
     ctx.body = JSON.stringify(retrieveEvents());
   });
 
@@ -42,7 +42,7 @@ export function initRoutes(api) {
         throw new Error(DDFCsvReaderVersion);
       }
 
-      ctx.status = 203; //not cached through cloudflare page rule
+      ctx.status = 200; //not cached through cloudflare cache rule
       ctx.body = JSON.stringify({
         server: {
           name: "small-waffle",
@@ -53,7 +53,7 @@ export function initRoutes(api) {
         availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
       })
     } else {
-      ctx.status = 203; //not cached through cloudflare page rule
+      ctx.status = 200; //not cached through cloudflare cache rule
       ctx.body = datasetBranchCommitMapping[datasetSlug] || {[datasetSlug]: "Dataset not found"};
     }
   });
@@ -71,7 +71,7 @@ export function initRoutes(api) {
       Log.info("Received a request to sync dataset: " + datasetSlug);
       result = await syncDataset(datasetSlug);
     }
-    ctx.status = 203; //not cached through cloudflare page rule
+    ctx.status = 200; //not cached through cloudflare cache rule
     ctx.body = {status: result};
   
   });
