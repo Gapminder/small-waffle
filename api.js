@@ -156,10 +156,10 @@ export function initRoutes(api) {
     let json, ddfQuery;
     let datasetSlug = ctx.params.datasetSlug;
     let branchOrCommit = ctx.params.branchOrCommit;
-    const eventKey = `${datasetSlug}/${branchOrCommit}?${queryString}`;
-  
+    
     const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
     const queryString = ctx.querystring; // Get the original query string
+    const eventKey = `${datasetSlug}/${branchOrCommit}?${queryString}`;
   
     let branch;
     let commit;
