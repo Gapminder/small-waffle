@@ -220,7 +220,7 @@ export function initRoutes(api) {
       if (!event.count)
         Log.info("NEW Query reached the reader", eventKey);
       else
-        Log.info(`Familiar query reached the reader, count: ${eventCount}`);
+        Log.info(`Familiar query reached the reader, count: ${event.count}`);
 
       const data = await readerInstance.read(ddfQuery);
       recordEvent(eventKey, {type: "query", status: "200", comment: "Query resolved", datasetSlug, branch, commit});
