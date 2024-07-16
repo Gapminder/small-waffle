@@ -156,6 +156,7 @@ export function initRoutes(api) {
     let json, ddfQuery;
     let datasetSlug = ctx.params.datasetSlug;
     let branchOrCommit = ctx.params.branchOrCommit;
+    const eventKey = `${datasetSlug}/${branchOrCommit}?${queryString}`;
   
     const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
     const queryString = ctx.querystring; // Get the original query string
@@ -196,7 +197,7 @@ export function initRoutes(api) {
       //Log.debug({ ddfQuery });
     } catch (err) {
       // malformed queries get logged, but don't raise errors/alarms
-      recordEvent(`${datasetSlug}/${branchOrCommit}?${queryString}`, {type: "query", status: "400", comment: "Query error", datasetSlug, branch, commit});
+      recordEvent(eventKey, {type: "query", status: "400", comment: "Query error", datasetSlug, branch, commit});
       Log.error(json ? { ddfQuery: json, req: ctx.request, err } : err);
       ctx.throw(
         400,
@@ -209,22 +210,23 @@ export function initRoutes(api) {
     try {
       const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
       if (!readerInstance) {
-        recordEvent(`${datasetSlug}/${branchOrCommit}?${queryString}`, {type: "query", status: "500", comment: `No data loaded for ${datasetSlug}/${branch}`, datasetSlug, branch, commit});
+        recordEvent(eventKey, {type: "query", status: "500", comment: `No data loaded for ${datasetSlug}/${branch}`, datasetSlug, branch, commit});
         ctx.throw(
           500,
           `500 No data loaded for ${datasetSlug}/${branch}`,
         );
       }
-      const eventCount = recordEvent(`${datasetSlug}/${branchOrCommit}?${queryString}`, {type: "query", status: "200", datasetSlug, branch, commit});
-      if (eventCount === 1) {
-        Log.info("NEW Query reached the reader", `${datasetSlug}/${branchOrCommit}?${queryString}`);
-      } else {
+      const event = retrieveEvents(eventKey); 
+      if (!event.count)
+        Log.info("NEW Query reached the reader", eventKey);
+      else
         Log.info(`Familiar query reached the reader, count: ${eventCount}`);
-      }
+
       const data = await readerInstance.read(ddfQuery);
+      recordEvent(eventKey, {type: "query", status: "200", comment: "Query resolved", datasetSlug, branch, commit});
       ctx.body = data;
     } catch (err) {
-      recordEvent(`${datasetSlug}/${branchOrCommit}?${queryString}`, {type: "query", status: "500", comment: err.message, datasetSlug, branch, commit});
+      recordEvent(eventKey, {type: "query", status: "500", comment: err.message, datasetSlug, branch, commit});
       Log.error(err, err.stack);
       ctx.throw(
         500,

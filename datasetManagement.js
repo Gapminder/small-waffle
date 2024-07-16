@@ -89,8 +89,8 @@ export async function syncDataset(datasetSlug) {
   }
   await loadReaderInstances(dataset, branchCommitMapping)
 
-  Log.info(`Sync complete for dataset with slug ${datasetSlug}`);
-  return(`Sync complete for dataset with slug ${datasetSlug}`);
+  Log.info(`Sync successful for dataset ${datasetSlug}`);
+  return(`Sync successful for ${datasetSlug}`);
 }
 
 async function loadReaderInstances(dataset, branchCommitMapping) {
