@@ -40,16 +40,13 @@ export function getBranchFromCommit(datasetSlug, commit) {
 
 export function getDatasetFromSlug(datasetSlug) {
   const dataset = allowedDatasets.find(f => f.slug === datasetSlug);
-  if (!dataset) {
-    throw new Error(`Query error: Dataset not allowed: ${datasetSlug}`);
-  }
-  return dataset;
+  return dataset || false;
 }
 
 export function getDefaultCommit(datasetSlug){
   const dataset = getDatasetFromSlug(datasetSlug);
   const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
-  return branchCommitMapping[ dataset.branches[0] ];
+  return dataset ? branchCommitMapping[ dataset.branches[0] ] : false;
 }
 
 
@@ -77,6 +74,8 @@ export async function syncDataset(datasetSlug) {
   `);
 
   const dataset = getDatasetFromSlug(datasetSlug);
+  
+  if (!dataset) throw new Error(`Syncing error: Dataset not allowed: ${datasetSlug}`);
 
   const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, dataset.branches);
 
