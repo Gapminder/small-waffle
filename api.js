@@ -11,7 +11,7 @@ import {
 } from "./datasetManagement.js";
 
 import { recordEvent, retrieveEvents } from "./event-analytics.js";
-import fs from 'fs';
+import DDFCsvReader from "@vizabi/reader-ddfcsv";
 
 import { allowedDatasets } from "./allowedDatasets.js";
 
@@ -33,21 +33,13 @@ export function initRoutes(api) {
     if (!datasetSlug) {
       Log.debug("Received a list all (public) datasets request");
 
-      //TODO: add version to DDFCsvReader.version
-      let DDFCsvReaderVersion = undefined; 
-      try {
-        DDFCsvReaderVersion = JSON.parse(fs.readFileSync('./node_modules/@vizabi/reader-ddfcsv/package.json', 'utf8')).version; 
-      } catch (error) {
-        DDFCsvReaderVersion = "Failed to read ./node_modules/@vizabi/reader-ddfcsv/package.json";
-        throw new Error(DDFCsvReaderVersion);
-      }
-
       ctx.status = 200; //not cached through cloudflare cache rule
       ctx.body = JSON.stringify({
         server: {
           name: "small-waffle",
           smallWaffleVersion: process.env.npm_package_version,
-          DDFCSVReaderVersion: DDFCsvReaderVersion
+          DDFCSVReaderVersion: DDFCsvReader.version,
+          DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo
         },
         allowedDatasets,
         availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
