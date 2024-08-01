@@ -67,6 +67,68 @@ export function initRoutes(api) {
     ctx.body = {status: result};
   
   });
+
+
+  api.get("/info/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?", async (ctx, next) => {
+    /*
+     * Get dataset info
+     */
+    let datasetSlug = ctx.params.datasetSlug;
+    let branchOrCommit = ctx.params.branchOrCommit;
+    
+    if(!datasetSlug){
+      Log.error("400 Received a request to get dataset info but no dataset provided");
+      ctx.throw(400, "Please specify a dataset, like https://small-waffle.gapminder.org/info/fasttrack/");
+      return;
+    }
+    
+    const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
+    if (!branchCommitMapping) {
+      Log.error(`404 Dataset not found: ${datasetSlug}`);
+      ctx.throw(404, "Not found");
+      return;
+    }
+
+    if (!branchOrCommit) {
+      const commit = getDefaultCommit(datasetSlug);
+      //Log.info("Redirecting to default branch's commit, generic case");
+      if (commit === false) {
+        Log.error(`403 Dataset not on allow list: ${datasetSlug}`);
+        ctx.throw(403, `Forbidden`);
+        return;
+      } else {
+        ctx.status = 302;
+        ctx.redirect(`/info/${datasetSlug}/${commit}`);
+        return;
+      }
+    }
+
+    // Redirect if version is a branch
+    if (branchCommitMapping[branchOrCommit]) {
+      const commit = branchCommitMapping[branchOrCommit];
+      ctx.status = 302;
+      ctx.redirect(`/info/${datasetSlug}/${commit}`);
+      return;
+    }
+
+    //datasetSlug is available and found among datasets
+    //branchOrCommit is a commit
+    //TODO: what if commit is not available? commi
+    const commit = branchOrCommit;
+    const branch = getBranchFromCommit(datasetSlug, commit);
+
+    try {
+      const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
+      if (!readerInstance) ctx.throw(500, `500 No reader instance found for ${datasetSlug}/${branchOrCommit}`);
+      const data = await readerInstance.getDatasetInfo();
+      ctx.body = data;
+    } catch (err) {
+      Log.error(err, err.stack);
+      ctx.throw(500, err.message);
+    }
+  
+  });
+
   
   api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
     const datasetSlug = ctx.params.datasetSlug;
