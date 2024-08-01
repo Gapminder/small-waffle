@@ -9,7 +9,7 @@ import {
   initRoutes,
 } from "./api.js";
 
-const port = process.env.PORT;
+const port = process.env.PORT || 3333;
 const Log = console;
 
 if (!port){ 
