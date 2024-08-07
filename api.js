@@ -6,7 +6,8 @@ import {
   syncAllDatasets,
   getBranchFromCommit,
   getDefaultCommit,
-  syncDataset
+  syncDataset,
+  getAllowedDatasetEntryFromSlug
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
@@ -77,20 +78,33 @@ export default function initRoutes(api) {
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
 
+    const errors = {
+      NO_DATASET_GIVEN: [400, `Received a request to get dataset info but no dataset provided`,` Please specify a dataset, like https://small-waffle.gapminder.org/info/fasttrack/`],
+      DATASET_NOT_ALLOWED: [403, `Dataset not allowed: ${datasetSlug}`,` Check if the dataset is correctly added into the control google spreadsheet`],
+      DATASET_NOT_FOUND: [404, `Dataset not found: ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+      DEFAULT_COMMIT_NOT_RESOLVED: [500, `Server failed to resolve the default commit for dataset ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+      NO_READER_INSTANCE: [500, `No reader instance found for ${datasetSlug}/${branchOrCommit}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+    };
+
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
       queryString: ctx.queryString, 
-      errors: {
-        NO_DATASET_GIVEN: [400, `Received a request to get dataset info but no dataset provided`,` Please specify a dataset, like https://small-waffle.gapminder.org/info/fasttrack/`],
-        DATASET_NOT_ALLOWED: [403, `Dataset not allowed: ${datasetSlug}`,` Check if the dataset is correctly added into the control google spreadsheet`],
-        DATASET_NOT_FOUND: [404, `Dataset not found: ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
-        DEFAULT_COMMIT_NOT_RESOLVED: [500, `Server failed to resolve the default commit for dataset ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
-        NO_READER_INSTANCE: [500, `No reader instance found for ${datasetSlug}/${branchOrCommit}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
-      }, 
+      errors, 
       redirectPrefix: `/info/${datasetSlug}/`,
-      tryFunction: async (readerInstance)=>{
-        const data = await readerInstance.getDatasetInfo();
-        return data;
+      callback: async ({success, error})=>{
+        const commit = branchOrCommit;
+        const branch = getBranchFromCommit(datasetSlug, commit);
+      
+        const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
+        if (!readerInstance) 
+          return error(errors.NO_READER_INSTANCE);
+      
+        try {
+          const data = await readerInstance.getDatasetInfo();
+          return success(data);
+        } catch (err) {
+          return error(err);
+        }        
       }
     });
 
@@ -99,6 +113,52 @@ export default function initRoutes(api) {
     if (redirect) ctx.redirect(redirect);
     if (success) ctx.body = success;
   });
+
+  /*
+  * Get assets
+  */
+  api.get("/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)?", async (ctx, next) => {
+
+    const datasetSlug = ctx.params.datasetSlug;
+    const branchOrCommit = ctx.params.branchOrCommit;
+    const asset = ctx.params.asset;
+
+    const errors = {
+      ASSET_NOT_PROVIDED: [400, `No asset provided in the route`,`Please specify an asset like https://small-waffle.gapminder.org/sg-master/assets/world-50m.json`],
+      NO_DATASET_GIVEN: [400, `Received a request to get asset but no dataset provided`,` Please specify a dataset, like https://small-waffle.gapminder.org/sg-master/assets/world-50m.json`],
+      DATASET_NOT_ALLOWED: [403, `Dataset not allowed: ${datasetSlug}`,` Check if the dataset is correctly added into the control google spreadsheet`],
+      DATASET_NOT_FOUND: [404, `Dataset not found: ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+      DEFAULT_COMMIT_NOT_RESOLVED: [500, `Server failed to resolve the default commit for dataset ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+    };
+
+    const {status, error, redirect, success} = await redirectLogic({
+      params: ctx.params, 
+      queryString: ctx.queryString, 
+      errors, 
+      redirectPrefix: `/${datasetSlug}/`,
+      redirectSuffix: `/assets/${asset}/`,
+      getValidationError: () => {
+        return !asset ? "ASSET_NOT_PROVIDED" : false;
+      },
+      callback: async ({redirect})=>{
+        const commit = branchOrCommit;
+        const branch = getBranchFromCommit(datasetSlug, commit); 
+        const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
+
+        const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
+        Log.info("302 Serving asset from a resolved path:", assetPath);
+        recordEvent(`${datasetSlug}/${branchOrCommit}/assets/${asset}`, {type: "asset", status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, datasetSlug, branch, commit});
+
+        return redirect(assetPath);
+      }
+    });
+
+    ctx.status = status;
+    if (error) ctx.throw(status, error);
+    if (redirect) ctx.redirect(redirect);
+    if (success) ctx.body = success;
+  });
+
 
   
   api.get("/:datasetSlug([-a-z_0-9]+)", async (ctx, next) => {
@@ -116,63 +176,6 @@ export default function initRoutes(api) {
       ctx.redirect(`/${datasetSlug}/${commit}?${queryString}`);
     }
   })
-  
-  api.get("/:datasetSlug([-a-z_0-9]+)/assets/:asset([-a-z_0-9.]+)", async (ctx, next) => {
-    const datasetSlug = ctx.params.datasetSlug;
-    const asset = ctx.params.asset;
-  
-    const commit = getDefaultCommit(datasetSlug);
-    //Log.info("Redirecting to default branch's commit, asset case");
-    if (commit === false) {
-      Log.error("403 Dataset not on allow list: " + datasetSlug);
-      recordEvent(`${datasetSlug}/assets/${asset}`, {type: "asset", status: "403", comment: "Dataset not on allow list", queryString});
-      ctx.throw(403, `Forbidden`)
-    } else {
-      ctx.status = 302;
-      ctx.redirect(`/${datasetSlug}/${commit}/assets/${asset}`);
-    }
-  })
-  
-  api.get(
-    "/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)/assets/:asset([-a-z_0-9.]+)",
-    async (ctx, next) => {
-      try {
-        Log.debug("Received asset query");
-        
-        const branchOrCommit = ctx.params.branchOrCommit;
-        const datasetSlug = ctx.params.datasetSlug;
-        const asset = ctx.params.asset;
-        
-        const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
-        if (branchCommitMapping) {
-          const commit = branchOrCommit;
-          const branch = getBranchFromCommit(datasetSlug, commit);
-          const dataset = getDatasetFromSlug(datasetSlug);
-          
-          const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
-          Log.info("302 Serving asset from a resolved path:", assetPath);
-          recordEvent(`${datasetSlug}/${branchOrCommit}/assets/${asset}`, {type: "asset", status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, datasetSlug, branch, commit});
-  
-          ctx.status = 302;
-          ctx.redirect(assetPath);
-          
-        } else {
-          Log.error("404 Dataset not found: ", datasetSlug);
-          recordEvent(`${datasetSlug}/${branchOrCommit}/assets/${asset}`, {type: "asset", status: "404", datasetSlug});
-          
-          ctx.status = 404;
-          ctx.body = {[datasetSlug]: "Dataset not found"};
-        }
-  
-  
-      } catch (err) {
-        Log.error(err);
-        recordEvent(`${datasetSlug}/${branchOrCommit}/assets/${asset}`, {type: "asset", status: "500", comment: err.message, datasetSlug});
-          
-        ctx.throw(500, `Sorry, small-waffle server seems to have a problem, try again later`)
-      }
-    },
-  );
   
   
   api.get("/:datasetSlug([-a-z_0-9]+)/:branchOrCommit([-a-z_0-9]+)", async (ctx, next) => {

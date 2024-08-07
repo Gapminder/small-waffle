@@ -8,7 +8,7 @@ import {
 
 const Log = console;
 
-export default async function redirectLogic({params, queryString, errors, redirectPrefix, tryFunction}) {
+export default async function redirectLogic({params, queryString, errors, redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
     const {datasetSlug, branchOrCommit, asset} = params; 
   
     function error(errorcode){
@@ -26,15 +26,19 @@ export default async function redirectLogic({params, queryString, errors, redire
       }
     }
   
-    function redirect(suffix) {
+    function redirect(target) {
       const prefix = redirectPrefix;
-      return {status: 302, redirect: prefix + suffix};
+      return {status: 302, redirect: target};
     }
   
     function success(data){
       return {status: 200, success: data};
     }
-  
+
+    const validationError = getValidationError && getValidationError();
+    if (validationError)
+      return error(validationError)
+    
     if(!datasetSlug) 
       return error("NO_DATASET_GIVEN");
   
@@ -57,29 +61,17 @@ export default async function redirectLogic({params, queryString, errors, redire
       if (defaultCommit === false)
         return error("DEFAULT_COMMIT_NOT_RESOLVED");
   
-      return redirect(defaultCommit);
+      return redirect(redirectPrefix + defaultCommit + redirectSuffix);
     }
   
     // Redirect if branchOrCommit is a known branch
     if (branchCommitMapping[branchOrCommit]) {
       const commit = branchCommitMapping[branchOrCommit];
-      return redirect(commit);
+      return redirect(redirectPrefix + commit + redirectSuffix);
     }
   
     //datasetSlug is allowed and found among datasets
     //branchOrCommit is a known commit
-    const commit = branchOrCommit;
-    const branch = getBranchFromCommit(datasetSlug, commit);
-  
-    const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
-    if (!readerInstance) 
-      return error("NO_READER_INSTANCE");
-  
-    try {
-      const data = await tryFunction(readerInstance);
-      return success(data);
-    } catch (err) {
-      return error(err);
-    }
+    return callback({success, redirect, error}); 
   
   }
