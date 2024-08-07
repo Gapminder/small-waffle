@@ -11,24 +11,27 @@ const Log = console;
 export default async function redirectLogic({params, queryString, errors, redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
     const {datasetSlug, branchOrCommit, asset} = params; 
   
-    function error(errorcode){
-      const err = errors[errorcode]
+    function error(err){
+      const knownError = errors[err];
   
-      if (!err.stack && err.length === 3) {
+      if (!err.stack && knownError && knownError.length === 3) {
         // known error
-        const [status, shortMessage, messageExtra] = err;
+        const [status, shortMessage, messageExtra] = knownError;
         Log.error(`${status} ${shortMessage}`);
         return {status, error: `${shortMessage} ${messageExtra}`};
+      } else if (err.includes("Too many query structure errors:")) {
+        // hardcoded known error from ddf-query-validator inside DDFCSV reader
+        Log.error(`${400} ${err}`);
+        return {status: 400, error: `${err}`};
       } else {
         // unknown error
         Log.error(err, err.stack);
-        return {status: 500, error: err.message};
+        return {status: 500, error: err.message ? err.message : err};
       }
     }
   
     function redirect(target) {
-      const prefix = redirectPrefix;
-      return {status: 302, redirect: target};
+      return {status: 302, redirect: `${target}?${queryString}`};
     }
   
     function success(data){

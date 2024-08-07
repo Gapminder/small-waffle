@@ -11,7 +11,7 @@ describe('API Routes: INFO', () => {
     it('NO_DATASET_GIVEN', async () => {
         const response = await request(app.callback()).get('/info');
         expect(response.status).to.equal(400);
-        expect(response.text).to.include("Received a request to get dataset info but no dataset provided");
+        expect(response.text).to.include("Received a request with no dataset provided");
     });
     it('DATASET_NOT_ALLOWED', async () => {
         const response = await request(app.callback()).get('/info/webui');
@@ -53,7 +53,7 @@ describe('API Routes: ASSETS', () => {
     it('NO_DATASET_GIVEN', async () => {
         const response = await request(app.callback()).get('/assets/world-50m.json');
         expect(response.status).to.equal(400);
-        expect(response.text).to.include("Received a request to get asset but no dataset provided");
+        expect(response.text).to.include("Received a request with no dataset provided");
     });
     it('DATASET_NOT_ALLOWED', async () => {
         const response = await request(app.callback()).get('/webui/assets/world-50m.json');
@@ -102,5 +102,82 @@ describe('API Routes: ASSETS', () => {
         expect(response.status).to.equal(404);
         expect(response.text).to.include('Not Found');
     });
+
+});
+
+
+
+describe('API Routes: DATA', () => {
+    it('NO_QUERY_PROVIDED', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("No query provided");
+    });
+    it('NO_QUERY_PROVIDED', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("No query provided");
+    });
+    it('NO_QUERY_PROVIDED', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("No query provided");
+    });
+    it('QUERY_PARSING_ERROR', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=key&=value;&value@;;&from=concepts.schema_`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("Query failed to parse");
+    });
+    it('NO_DATASET_GIVEN', async () => {
+        const response = await request(app.callback()).get(`/?_select_key@=key&=value;&value@;;&from=concepts.schema`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("Received a request with no dataset provided");
+    });
+    it('DATASET_NOT_ALLOWED', async () => {
+        const response = await request(app.callback()).get(`/webui?_select_key@=key&=value;&value@;;&from=concepts.schema`);
+        expect(response.status).to.equal(403);
+        expect(response.text).to.include("Dataset not allowed");
+    });
+    it('Redirect when version is not given', async () => {
+        const response = await request(app.callback()).get(`/sg-master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        expect(response.status).to.equal(302);
+        expect(response.text).to.include('Redirecting to');
+        expect(response.text).to.include(sgMasterLatestCommit+"?_select_key");
+    });
+    it('Redirect when version is unknown', async () => {
+        const response = await request(app.callback()).get(`/sg-master/unknown?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        expect(response.status).to.equal(302);
+        expect(response.text).to.include('Redirecting to');
+        expect(response.text).to.include(sgMasterLatestCommit+"?_select_key");
+    });
+    it('Redirect when version is a known branch', async () => {
+        const response = await request(app.callback()).get(`/sg-master/master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        expect(response.status).to.equal(302);
+        expect(response.text).to.include('Redirecting to');
+        expect(response.text).to.include(sgMasterLatestCommit+"?_select_key");
+    });
+    it('Successful case', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('world_4region');
+        expect(response.body).to.have.property('rows').that.deep.include(['africa', 1, 'Africa', 2]);
+    });
+    it('DDFCSV ddf-query-validator error', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("* 'from' clause must be one of the list: concepts, entities, datapoints,");
+    });
+    it('DDFCSV ddf-query-validator error', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("* 'from' clause couldn't be empty");
+    });
+    it('Unknown DDFCSV reader error', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_test500error:true&select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        expect(response.status).to.equal(500);
+        expect(response.text).to.include('Internal Server Error');
+    });
+
 
 });
