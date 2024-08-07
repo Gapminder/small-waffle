@@ -5,11 +5,11 @@ import {
   datasetVersionReaderInstances,
   syncAllDatasets,
   getBranchFromCommit,
-  getDatasetFromSlug,
   getDefaultCommit,
   syncDataset
 } from "./datasetManagement.js";
 
+import redirectLogic from "./api-redirect-logic.js"
 import { recordEvent, retrieveEvents } from "./event-analytics.js";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 
@@ -17,7 +17,8 @@ import { allowedDatasets } from "./allowedDatasets.js";
 
 const Log = console;
 
-export function initRoutes(api) {
+
+export default function initRoutes(api) {
 
   api.get("/events", async (ctx, next) => {
     Log.debug("Received a request to list all events");
@@ -68,65 +69,35 @@ export function initRoutes(api) {
   
   });
 
-
+  /*
+  * Get dataset info
+  */
   api.get("/info/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?", async (ctx, next) => {
-    /*
-     * Get dataset info
-     */
-    let datasetSlug = ctx.params.datasetSlug;
-    let branchOrCommit = ctx.params.branchOrCommit;
-    
-    if(!datasetSlug){
-      Log.error("400 Received a request to get dataset info but no dataset provided");
-      ctx.throw(400, "Please specify a dataset, like https://small-waffle.gapminder.org/info/fasttrack/");
-      return;
-    }
-    
-    const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
-    if (!branchCommitMapping) {
-      Log.error(`404 Dataset not found: ${datasetSlug}`);
-      ctx.throw(404, "Not found");
-      return;
-    }
 
-    if (!branchOrCommit) {
-      const commit = getDefaultCommit(datasetSlug);
-      //Log.info("Redirecting to default branch's commit, generic case");
-      if (commit === false) {
-        Log.error(`403 Dataset not on allow list: ${datasetSlug}`);
-        ctx.throw(403, `Forbidden`);
-        return;
-      } else {
-        ctx.status = 302;
-        ctx.redirect(`/info/${datasetSlug}/${commit}`);
-        return;
+    const datasetSlug = ctx.params.datasetSlug;
+    const branchOrCommit = ctx.params.branchOrCommit;
+
+    const {status, error, redirect, success} = await redirectLogic({
+      params: ctx.params, 
+      queryString: ctx.queryString, 
+      errors: {
+        NO_DATASET_GIVEN: [400, `Received a request to get dataset info but no dataset provided`,` Please specify a dataset, like https://small-waffle.gapminder.org/info/fasttrack/`],
+        DATASET_NOT_ALLOWED: [403, `Dataset not allowed: ${datasetSlug}`,` Check if the dataset is correctly added into the control google spreadsheet`],
+        DATASET_NOT_FOUND: [404, `Dataset not found: ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+        DEFAULT_COMMIT_NOT_RESOLVED: [500, `Server failed to resolve the default commit for dataset ${datasetSlug}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+        NO_READER_INSTANCE: [500, `No reader instance found for ${datasetSlug}/${branchOrCommit}`,` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`],
+      }, 
+      redirectPrefix: `/info/${datasetSlug}/`,
+      tryFunction: async (readerInstance)=>{
+        const data = await readerInstance.getDatasetInfo();
+        return data;
       }
-    }
+    });
 
-    // Redirect if version is a branch
-    if (branchCommitMapping[branchOrCommit]) {
-      const commit = branchCommitMapping[branchOrCommit];
-      ctx.status = 302;
-      ctx.redirect(`/info/${datasetSlug}/${commit}`);
-      return;
-    }
-
-    //datasetSlug is available and found among datasets
-    //branchOrCommit is a commit
-    //TODO: what if commit is not available? commi
-    const commit = branchOrCommit;
-    const branch = getBranchFromCommit(datasetSlug, commit);
-
-    try {
-      const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
-      if (!readerInstance) ctx.throw(500, `500 No reader instance found for ${datasetSlug}/${branchOrCommit}`);
-      const data = await readerInstance.getDatasetInfo();
-      ctx.body = data;
-    } catch (err) {
-      Log.error(err, err.stack);
-      ctx.throw(500, err.message);
-    }
-  
+    ctx.status = status;
+    if (error) ctx.throw(status, error);
+    if (redirect) ctx.redirect(redirect);
+    if (success) ctx.body = success;
   });
 
   
