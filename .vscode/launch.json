@@ -8,7 +8,8 @@
             "type": "node",
             "request": "attach",
             "name": "Attach to Process",
-            "processId": "${command:PickProcess}"
+            "processId": "${command:PickProcess}",
+            "outFiles": ["${workspaceFolder}/small-waffle-dev/*.js"]
           },
     ]
 }
