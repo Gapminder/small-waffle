@@ -6,26 +6,22 @@ import {
   loadAllDatasets,
 } from "./datasetManagement.js";
 import initRoutes from "./api.js";
+import Log from "./logger.js"
 
 const port = process.env.PORT || 3333;
-import Log from "./logger.js"
+
+Log.info("Starting small-waffle on PORT " + port);
+
 const app = new Koa();
+const api = new Router(); // routes for the main API
 
-if (!port){ 
-  Log.error("Attempting to start small-waffle but PORT not given. Not starting anything");
-} else {
-  Log.info("Starting small-waffle on PORT " + port);
+await loadAllDatasets();
+initRoutes(api);
 
-  const api = new Router(); // routes for the main API
+app.use(compress());
+app.use(serve('datasets'));
+app.use(api.routes());
 
-  await loadAllDatasets();
-  initRoutes(api);
+const server = app.listen(port);
 
-  app.use(compress());
-  app.use(serve('datasets'));
-  app.use(api.routes());
-  app.listen(port);
-}
-
-
-export default app;
+export { app, server };

@@ -1,11 +1,16 @@
 import request from 'supertest';
 import * as chai from 'chai';
-import app from '../index.js'; // Ensure the server file also supports ES6 imports
+import {app, server} from '../index.js';
 
 const expect = chai.expect;
 
 const countryFlagsLatestCommit = "d6ae76d";
 const sgMasterLatestCommit = "a850d17";
+
+//Global after hook to stop server after running tests
+after(done => {
+    server.close(done);
+});
 
 describe('API Routes: INFO', () => {
     it('NO_DATASET_GIVEN', async () => {
