@@ -84,9 +84,23 @@ describe('API Routes: ASSETS', () => {
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/open-numbers/ddf--gapminder--systema_globalis/master/assets/world-50m.json");
     });
-    it('Successful case', async () => {
+    it('Successful case JSON', async () => {
         const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--systema_globalis/master/assets/world-50m.json");
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('type', 'Topology');
     });
+    it('Successful case PNG', async () => {
+        const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--billionaires/stage/assets/elon_musk.png");
+        expect(response.status).to.equal(200);
+        expect(response.headers['content-type']).to.include('image/png');
+        expect(response.headers).to.have.property('content-length');
+        expect(parseInt(response.headers['content-length'], 10)).to.be.above(0);
+        expect(Buffer.isBuffer(response.body)).to.be.true;
+    });
+    it('Missing asset PNG', async () => {
+        const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--billionaires/stage/assets/missing_asset.png");
+        expect(response.status).to.equal(404);
+        expect(response.text).to.include('Not Found');
+    });
+
 });
