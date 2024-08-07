@@ -5,22 +5,20 @@ import compress from "koa-compress";
 import {
   syncAllDatasets,
 } from "./datasetManagement.js";
-import {
-  initRoutes,
-} from "./api.js";
+import initRoutes from "./api.js";
 
 const port = process.env.PORT || 3333;
 const Log = console;
+const app = new Koa();
 
 if (!port){ 
   Log.error("Attempting to start small-waffle but PORT not given. Not starting anything");
 } else {
   Log.info("Starting small-waffle on PORT " + port);
 
-  const app = new Koa();
   const api = new Router(); // routes for the main API
 
-  syncAllDatasets();
+  await syncAllDatasets();
   initRoutes(api);
 
   app.use(compress());
@@ -28,3 +26,6 @@ if (!port){
   app.use(api.routes());
   app.listen(port);
 }
+
+
+export default app;
