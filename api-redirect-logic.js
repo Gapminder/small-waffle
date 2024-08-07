@@ -1,7 +1,5 @@
 import {
     datasetBranchCommitMapping,
-    datasetVersionReaderInstances,
-    getBranchFromCommit,
     getAllowedDatasetEntryFromSlug,
     getDefaultCommit,
   } from "./datasetManagement.js";
@@ -57,20 +55,20 @@ export default async function redirectLogic({params, queryString, errors, redire
     if (
       !branchOrCommit
       ||
-      !branchCommitMapping[branchOrCommit] && !Object.values(branchCommitMapping).find(f => f === branchOrCommit)
+      !branchCommitMapping[branchOrCommit] && !Object.values(branchCommitMapping).find(f => f === branchOrCommit || f.substr(0,7) === branchOrCommit)
     ) {
       const defaultCommit = getDefaultCommit(datasetSlug);
       
       if (defaultCommit === false)
         return error("DEFAULT_COMMIT_NOT_RESOLVED");
   
-      return redirect(redirectPrefix + defaultCommit + redirectSuffix);
+      return redirect(redirectPrefix + defaultCommit.substr(0,7) + redirectSuffix);
     }
   
     // Redirect if branchOrCommit is a known branch
     if (branchCommitMapping[branchOrCommit]) {
       const commit = branchCommitMapping[branchOrCommit];
-      return redirect(redirectPrefix + commit + redirectSuffix);
+      return redirect(redirectPrefix + commit.substr(0,7) + redirectSuffix);
     }
   
     //datasetSlug is allowed and found among datasets

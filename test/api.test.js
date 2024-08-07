@@ -4,8 +4,8 @@ import app from '../index.js'; // Ensure the server file also supports ES6 impor
 
 const expect = chai.expect;
 
-const countryFlagsLatestCommit = "d6ae76ddf1f63b2fb8e816c8bf38b701f587d19f";
-const sgMasterLatestCommit = "a850d17e9e2ce5cf22ca92b55d33e95748a1ca8d";
+const countryFlagsLatestCommit = "d6ae76d";
+const sgMasterLatestCommit = "a850d17";
 
 describe('API Routes: INFO', () => {
     it('NO_DATASET_GIVEN', async () => {

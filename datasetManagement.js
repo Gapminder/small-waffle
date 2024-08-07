@@ -31,7 +31,7 @@ export const datasetBranchCommitMapping = {}
 export function getBranchFromCommit(datasetSlug, commit) {
   const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
   for (let [branch, mappedCommit] of Object.entries(branchCommitMapping)) {
-    if (mappedCommit === commit) {
+    if (mappedCommit === commit || mappedCommit.substr(0,7) === commit) {
       return branch;
     }
   }
