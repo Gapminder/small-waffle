@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node/index.cjs';
-const Log = console;
+import Log from "./logger.js"
 
 const repoUrlTemplate = (datasetId) => `https://github.com/${datasetId}`
 

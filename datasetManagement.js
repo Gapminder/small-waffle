@@ -4,7 +4,7 @@ import {resultTransformer} from "./resultTransformer.js";
 import {getRepoBranchCommitMapping} from "./getRepoBranchCommitMapping.js";
 import {updateFilesOnDisk, cleanupAllDirectories} from "./updateFilesOnDisk.js";
 import { updateAllowedDatasets, allowedDatasets } from "./allowedDatasets.js";
-const Log = console;
+import Log from "./logger.js"
 
 const rootPath = path.resolve("./datasets/");
 

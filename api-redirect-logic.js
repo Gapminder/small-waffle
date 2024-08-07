@@ -6,7 +6,7 @@ import {
     getDefaultCommit,
   } from "./datasetManagement.js";
 
-const Log = console;
+import Log from "./logger.js"
 
 export default async function redirectLogic({params, queryString, errors, redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
     const {datasetSlug, branchOrCommit, asset} = params; 

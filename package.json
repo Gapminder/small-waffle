@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "export PORT=4444 && nodemon index.js --ignore datasets/",
-    "serve": "export PORT=3333 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log",
-    "test": "export PORT=4444 && mocha",
+    "start": "export PORT=4444 && export VERBOSITY=4 && nodemon index.js --ignore datasets/",
+    "serve": "export PORT=3333 && export VERBOSITY=2 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log",
+    "test": "export PORT=4444 && export VERBOSITY=0 && mocha",
     "build": "echo 'No build step required for serverless functions'"
   },
   "author": "",

@@ -8,7 +8,7 @@ import {
 import initRoutes from "./api.js";
 
 const port = process.env.PORT || 3333;
-const Log = console;
+import Log from "./logger.js"
 const app = new Koa();
 
 if (!port){ 

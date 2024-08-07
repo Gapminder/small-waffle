@@ -16,8 +16,7 @@ import DDFCsvReader from "@vizabi/reader-ddfcsv";
 
 import { allowedDatasets } from "./allowedDatasets.js";
 
-const Log = console;
-
+import Log from "./logger.js"
 
 export default function initRoutes(api) {
 

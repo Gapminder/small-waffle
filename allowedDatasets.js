@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import csv from 'csv-parser';
-const Log = console;
+import Log from "./logger.js"
 
 export let allowedDatasets = [];
 // looks like this = [
