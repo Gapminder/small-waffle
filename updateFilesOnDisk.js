@@ -14,6 +14,12 @@ export async function updateFilesOnDisk(rootPath, datasetId, branchCommitMapping
   }
 }
 
+export async function checkFilesOnDisk(rootPath, datasetId, branchCommitMapping) {
+  for (const branchName of Object.keys(branchCommitMapping)) {
+    await ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branchName);
+  }
+}
+
 export function cleanupAllDirectories(rootPath, allowedDatasets) {
   Log.info(`Cleaning up directories for all datasets`)
   if (!fs.existsSync(rootPath)) {
@@ -91,4 +97,15 @@ async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit)
   } else {
     Log.info("The checked out files are the ones from the latest commit");
   }
+}
+
+
+
+export async function getLocalBranchCommitMapping(rootPath, datasetId, branches) {
+  const promises = branches.map(branch => {
+    const branchPath = path.join(rootPath, datasetId, branch);
+    return git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null).then(commit => [branch, commit]);
+  });
+  const array = await Promise.all(promises);
+  return Object.fromEntries(array);
 }

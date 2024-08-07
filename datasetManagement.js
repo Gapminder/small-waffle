@@ -2,7 +2,12 @@ import * as path from 'path';
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import {resultTransformer} from "./resultTransformer.js";
 import {getRepoBranchCommitMapping} from "./getRepoBranchCommitMapping.js";
-import {updateFilesOnDisk, cleanupAllDirectories} from "./updateFilesOnDisk.js";
+import {
+  getLocalBranchCommitMapping, 
+  checkFilesOnDisk,
+  updateFilesOnDisk, 
+  cleanupAllDirectories
+} from "./updateFilesOnDisk.js";
 import { updateAllowedDatasets, allowedDatasets } from "./allowedDatasets.js";
 import Log from "./logger.js"
 
@@ -68,6 +73,22 @@ export async function syncAllDatasets() {
 }
 
 
+export async function loadAllDatasets() {
+  await updateAllowedDatasets();
+  const datasetListString = allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : "";
+  Log.info(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
+
+  for (const dataset of allowedDatasets)
+    await loadDataset(dataset.slug);
+
+  Log.info(`
+  🟢 Load complete! This is not the complete sync. Run /sync to do that.
+  `);
+
+  return `🟢 Load complete for ${allowedDatasets.length} datasets: ${datasetListString}`;
+}
+
+
 export async function syncDataset(datasetSlug) {
   Log.info(`
   === Syncing dataset with slug ${datasetSlug} ===
@@ -86,6 +107,33 @@ export async function syncDataset(datasetSlug) {
     Log.info('Files on disk updated successfully.');
   } catch (err) {
     Log.error('Error updating files on disk:', err);
+  }
+  await loadReaderInstances(dataset, branchCommitMapping)
+
+  Log.info(`Sync successful for dataset ${datasetSlug}`);
+  return(`Sync successful for ${datasetSlug}`);
+}
+
+export async function loadDataset(datasetSlug) {
+  Log.info(`
+  === Loading dataset with slug ${datasetSlug} ===
+  `);
+
+  const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
+  
+  if (!dataset) throw new Error(`Syncing error: Dataset not allowed: ${datasetSlug}`);
+
+  const branchCommitMapping = await getLocalBranchCommitMapping(rootPath, dataset.id, dataset.branches);
+
+  Log.info(branchCommitMapping)
+
+  datasetBranchCommitMapping[dataset.slug] = branchCommitMapping;
+
+  try {
+    await checkFilesOnDisk(rootPath, dataset.id, branchCommitMapping)
+    Log.info('Files on disk checked successfully.');
+  } catch (err) {
+    Log.error('Error checking files on disk:', err);
   }
   await loadReaderInstances(dataset, branchCommitMapping)
 

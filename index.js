@@ -3,7 +3,7 @@ import Router from "koa-router";
 import serve from "koa-static";
 import compress from "koa-compress";
 import {
-  syncAllDatasets,
+  loadAllDatasets,
 } from "./datasetManagement.js";
 import initRoutes from "./api.js";
 
@@ -18,7 +18,7 @@ if (!port){
 
   const api = new Router(); // routes for the main API
 
-  await syncAllDatasets();
+  await loadAllDatasets();
   initRoutes(api);
 
   app.use(compress());
