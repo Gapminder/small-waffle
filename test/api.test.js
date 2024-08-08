@@ -4,8 +4,11 @@ import {app, server} from '../index.js';
 
 const expect = chai.expect;
 
-const countryFlagsLatestCommit = "d6ae76d";
-const sgMasterLatestCommit = "a850d17";
+//Get latest commits
+const response = await request(app.callback()).get('/status');
+const availableDatasets = JSON.parse(response.text).availableDatasets;
+const countryFlagsLatestCommit = availableDatasets["country-flags"].master.substr(0,7);
+const sgMasterLatestCommit = availableDatasets["sg-master"].master.substr(0,7);
 
 //Global after hook to stop server after running tests
 after(done => {
