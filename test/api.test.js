@@ -65,21 +65,21 @@ describe('API Routes: INFO', () => {
         const response = await request(app.callback()).get('/info/country-flags');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(countryFlagsLatestCommit);
+        expect(response.text).to.include("/info/country-flags/" + countryFlagsLatestCommit);
     });
     it('Redirect when version is unknown', async () => {
         const response = await request(app.callback()).get('/info/country-flags/unknownsomething');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(countryFlagsLatestCommit);
+        expect(response.text).to.include("/info/country-flags/" + countryFlagsLatestCommit);
     });
     it('Redirect when version is a known branch', async () => {
         const response = await request(app.callback()).get('/info/country-flags/master');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(countryFlagsLatestCommit);
+        expect(response.text).to.include("/info/country-flags/" + countryFlagsLatestCommit);
     });
-    it('Successful case', async () => {
+    it('Successful case - info', async () => {
         const response = await request(app.callback()).get('/info/country-flags/'+countryFlagsLatestCommit);
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('name', 'ddf--gapminder--country_flag_svg');
@@ -127,12 +127,12 @@ describe('API Routes: ASSETS', () => {
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/open-numbers/ddf--gapminder--systema_globalis/master/assets/world-50m.json");
     });
-    it('Successful case JSON', async () => {
+    it('Successful case - JSON asset', async () => {
         const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--systema_globalis/master/assets/world-50m.json");
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('type', 'Topology');
     });
-    it('Successful case PNG', async () => {
+    it('Successful case - PNG asset', async () => {
         const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--billionaires/stage/assets/elon_musk.png");
         expect(response.status).to.equal(200);
         expect(response.headers['content-type']).to.include('image/png');
@@ -140,7 +140,7 @@ describe('API Routes: ASSETS', () => {
         expect(parseInt(response.headers['content-length'], 10)).to.be.above(0);
         expect(Buffer.isBuffer(response.body)).to.be.true;
     });
-    it('Missing asset PNG', async () => {
+    it('Missing PNG asset', async () => {
         const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--billionaires/stage/assets/missing_asset.png");
         expect(response.status).to.equal(404);
         expect(response.text).to.include('Not Found');
@@ -199,29 +199,48 @@ describe('API Routes: DATA', () => {
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
     });
-    it('Successful case entities', async () => {
+    it('Successful case - entities', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('world_4region');
         expect(response.body).to.have.property('rows').that.deep.include(['africa', 1, 'Africa', 2]);
     });
-    it('Successful case datapoints', async () => {
+    it('Successful case - datapoints', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=internet/_users;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=usa&=chn&=rus&=nga`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('internet_users');
         expect(response.body).to.have.property('rows').that.deep.include(['chn', 1998, 0.16854]);
     });
-    it('DDFCSV ddf-query-validator error', async () => {
+    it('Successful case - datapoints', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=gender&=time;&value@=literacy/_rate/_adult;;&from=datapoints&where_time=2011`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('literacy_rate_adult');
+        expect(response.body).to.have.property('rows').that.deep.include(["arm", 0, 2011, 99.71]);
+    });
+    it('Successful case - datapoints large', async () => {
+        const response = await request(app.callback()).get(`/population-master/${popMasterLatestFullCommit}?_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('population');
+        expect(response.body).to.have.property('rows').that.deep.include(['chn', 25, 1, 2008, 10886686]);
+    });
+    it('DDFCSV ddf-query-validator error - invalid "from" clause', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause must be one of the list: concepts, entities, datapoints,");
     });
-    it('DDFCSV ddf-query-validator error', async () => {
+    it('DDFCSV ddf-query-validator error - missing "from" clause', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause couldn't be empty");
+    });
+    it('DDFCSV ddf-query-validator error - wrong dataset requested', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_$and@_year=2022;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=world`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("Too many query definition errors");
     });
     it('Deliberate crash to create a 500 error', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_test500error:true&select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
