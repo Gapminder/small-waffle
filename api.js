@@ -38,7 +38,7 @@ export default function initRoutes(api) {
 
     let datasetSlug = ctx.params.dataset;
     if (!datasetSlug) {
-      Log.debug("Received a general status requests");
+      Log.debug("Received a general status request");
 
       const {heapTotal, heapUsed} = process.memoryUsage();
       const {heap_size_limit} = getHeapStatistics();
@@ -105,7 +105,7 @@ export default function initRoutes(api) {
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
     
-    Log.info(`Received an info request for ${datasetSlug}/${branchOrCommit}`);
+    Log.debug(`Received an info request for ${datasetSlug}/${branchOrCommit}`);
 
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
@@ -165,7 +165,7 @@ export default function initRoutes(api) {
         if (!event.count)
           Log.info(`NEW Query reached the reader, serving asset of ${datasetSlug}/${branch} from resolved path:`, assetPath);
         else
-          Log.info(`Familiar asset query reached the reader, count: ${event.count}`);
+          Log.debug(`Familiar asset query reached the reader, count: ${event.count}`);
 
         recordEvent(eventKey, {type: "asset", status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, datasetSlug, branch, commit});
 
@@ -222,7 +222,7 @@ export default function initRoutes(api) {
         if (!event.count)
           Log.info("NEW Query reached the reader", eventKey);
         else
-          Log.info(`Familiar query reached the reader, count: ${event.count}`);
+          Log.debug(`Familiar query reached the reader, count: ${event.count}`);
           
         try {
           const ddfQuery = Urlon.parse(decodeURIComponent(queryString));
