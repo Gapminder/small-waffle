@@ -51,10 +51,6 @@ export default async function redirectLogic({params, queryString, type, redirect
     function success(data){
       return {status: 200, success: data};
     }
-
-    const validationError = getValidationError && getValidationError();
-    if (validationError)
-      return error(validationError)
     
     if(!datasetSlug) 
       return error("NO_DATASET_GIVEN");
@@ -65,6 +61,10 @@ export default async function redirectLogic({params, queryString, type, redirect
     const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
     if (!branchCommitMapping) 
       return error("DATASET_NOT_FOUND");
+
+    const validationError = getValidationError && getValidationError();
+    if (validationError)
+      return error(validationError)
   
     // Redirect if branchOrCommit not given (default branch)
     // Redirect if branchOrCommit is unknown branch OR unknown commit
