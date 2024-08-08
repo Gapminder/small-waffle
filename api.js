@@ -43,6 +43,7 @@ export default function initRoutes(api) {
         server: {
           name: "small-waffle",
           uptime_ms,
+          liveSince,
           smallWaffleVersion: process.env.npm_package_version,
           DDFCSVReaderVersion: DDFCsvReader.version,
           DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo
