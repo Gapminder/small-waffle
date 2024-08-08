@@ -10,9 +10,11 @@ const status = JSON.parse(response.text);
 
 const countryFlagsLatestFullCommit = status.availableDatasets["country-flags"].master;
 const sgMasterLatestFullCommit = status.availableDatasets["sg-master"].master;
+const popMasterLatestFullCommit = status.availableDatasets["population-master"].master;
 
 const countryFlagsLatestCommit = countryFlagsLatestFullCommit.substr(0,7);
 const sgMasterLatestCommit = sgMasterLatestFullCommit.substr(0,7);
+const popMasterLatestCommit = popMasterLatestFullCommit.substr(0,7);
 
 //Global after hook to stop server after running tests
 after(done => {
@@ -197,12 +199,19 @@ describe('API Routes: DATA', () => {
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
     });
-    it('Successful case', async () => {
+    it('Successful case entities', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('world_4region');
         expect(response.body).to.have.property('rows').that.deep.include(['africa', 1, 'Africa', 2]);
+    });
+    it('Successful case datapoints', async () => {
+        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=internet/_users;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=usa&=chn&=rus&=nga`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('internet_users');
+        expect(response.body).to.have.property('rows').that.deep.include(['chn', 1998, 0.16854]);
     });
     it('DDFCSV ddf-query-validator error', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
@@ -219,6 +228,15 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(500);
         expect(response.text).to.include('Internal Server Error');
     });
+    it('Deliberate crash from within the reader', async () => {
+        //this query is achieved by taking a correct query and using double quotes around it in lunux
+        //echo "http://localhost:4444/population-master/8606720f16f1afa47b719f951c1a3e42f83e93ad?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_$and@_year=2022;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=world"
+        //doesn't matter on which dataset you perform it it's still doomy
+        const response = await request(app.callback()).get(`/population-master/${popMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_@_year=2022;&_geo=;;;&join_=geo&where_@_geo_@=world`);
+        expect(response.status).to.equal(500);
+        expect(response.text).to.include('Internal Server Error');
+    });
+
 
 
 });
