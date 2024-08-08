@@ -12,7 +12,7 @@ export default function errors(datasetSlug, branchOrCommit) {
     ],
     DATASET_NOT_FOUND: [
       404,
-      `Dataset not found: ${datasetSlug}`,
+      `Dataset allowed by config but not found: ${datasetSlug}`,
       `Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
     ],
     DEFAULT_COMMIT_NOT_RESOLVED: [
@@ -23,7 +23,7 @@ export default function errors(datasetSlug, branchOrCommit) {
     NO_READER_INSTANCE: [
       500,
       `No reader instance found for ${datasetSlug}/${branchOrCommit}`,
-      ` Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
+      `Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
     ],
     NO_QUERY_PROVIDED: [
       400,
@@ -33,7 +33,7 @@ export default function errors(datasetSlug, branchOrCommit) {
     QUERY_PARSING_ERROR: [
       400,
       `Query failed to parse for ${datasetSlug}`,
-      `The URL query must be a valid URLON v2.1.0 string. note! this is old URLON version`
+      `The URL query must be a valid URLON v2.1.0 string. note! this is the old URLON version`
     ],
     ASSET_NOT_PROVIDED: [
       400,

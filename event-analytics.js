@@ -1,3 +1,4 @@
+import Log from "./logger.js";
 const requestMap = new Map();
 
 export function recordEvent(key, extras = {}){
@@ -5,12 +6,12 @@ export function recordEvent(key, extras = {}){
 
     const now = new Date();
     const now_ms = now.valueOf();
-
-    if(!requestMap.get(key)) {
+    const record = requestMap.get(key);
+    
+    if(!record) {
         requestMap.set(key, {count: 1, ...extras, latest: now, latest_ms: now_ms});
         return 1;
     } else {
-        const record = requestMap.get(key);
         record.count = record.count + 1;
         record.latest = now;
         record.latest_ms = now_ms;

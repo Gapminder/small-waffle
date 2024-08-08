@@ -10,9 +10,9 @@ import {
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
-import errors from "./api-errors.js";
 import { recordEvent, retrieveEvents } from "./event-analytics.js";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
+import { getHeapStatistics } from 'v8';
 
 import { allowedDatasets } from "./allowedDatasets.js";
 
@@ -22,28 +22,42 @@ const liveSince = (new Date()).valueOf();
 
 export default function initRoutes(api) {
 
+  /*
+  * Fetch events
+  */
   api.get("/events", async (ctx, next) => {
     Log.debug("Received a request to list all events");
     ctx.status = 200; //not cached through cloudflare cache rule
     ctx.body = JSON.stringify(retrieveEvents());
   });
 
-  api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {
-    /*
-     * List all (public) datasets that are currently available.
-     */
+  /*
+  * Check server status, allowed and available datasets
+  */
+  api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {   
+
     let datasetSlug = ctx.params.dataset;
     if (!datasetSlug) {
-      Log.debug("Received a list all (public) datasets request");
+      Log.debug("Received a general status requests");
 
-      const uptime_ms = (new Date()).valueOf() - liveSince;
+      const {heapTotal, heapUsed} = process.memoryUsage();
+      const {heap_size_limit} = getHeapStatistics();
+      const toMB = (b) => Math.round(b/1024/1024);
+      const memory = {
+        limit_MB: toMB(heap_size_limit),
+        heapTotal_MB: toMB(heapTotal),
+        heapUsed_MB: toMB(heapUsed),
+        heapTotal_PCT:Math.round(heapTotal/heap_size_limit * 100),
+        heapUsed_PCT: Math.round(heapUsed/heap_size_limit * 100)
+      }
 
-      ctx.status = 200; //not cached through cloudflare cache rule
+      ctx.status = 200; 
       ctx.body = JSON.stringify({
         server: {
           name: "small-waffle",
-          uptime_ms,
+          uptime_ms: (new Date()).valueOf() - liveSince,
           liveSince,
+          memory,
           smallWaffleVersion: process.env.npm_package_version,
           DDFCSVReaderVersion: DDFCsvReader.version,
           DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo
@@ -52,15 +66,23 @@ export default function initRoutes(api) {
         availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
       })
     } else {
-      ctx.status = 200; //not cached through cloudflare cache rule
-      ctx.body = datasetBranchCommitMapping[datasetSlug] || {[datasetSlug]: "Dataset not found"};
+      Log.debug(`Received a status requests for ${datasetSlug}`);
+
+      const bcm = datasetBranchCommitMapping[datasetSlug];
+      if (bcm){
+        ctx.status = 200; 
+        ctx.body = bcm;
+      } else {
+        ctx.throw(404, `Dataset not found: ${datasetSlug}`)
+      }
     }
   });
   
+  /*
+  * Sync the dataset metadata and files between disk, memory and GitHub
+  */
   api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
-    /*
-     * Sync the dataset metadata and files between disk, memory and GitHub
-     */
+
     let datasetSlug = ctx.params.datasetSlug;
     let result = "";
     if(!datasetSlug){
@@ -70,7 +92,7 @@ export default function initRoutes(api) {
       Log.info("Received a request to sync dataset: " + datasetSlug);
       result = await syncDataset(datasetSlug);
     }
-    ctx.status = 200; //not cached through cloudflare cache rule
+    ctx.status = 200; 
     ctx.body = {status: result};
   
   });
@@ -79,16 +101,16 @@ export default function initRoutes(api) {
   * Get dataset info
   */
   api.get("/info/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?", async (ctx, next) => {
-
+    
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
-
-
+    
+    Log.info(`Received an info request for ${datasetSlug}/${branchOrCommit}`);
 
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
       queryString: ctx.queryString, 
-      errors: errors(datasetSlug, branchOrCommit), 
+      type: "info",
       redirectPrefix: `/info/${datasetSlug}/`,
       callback: async ({success, error})=>{
         const commit = branchOrCommit;
@@ -121,13 +143,12 @@ export default function initRoutes(api) {
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
     const asset = ctx.params.asset;
-
-
+    const eventKey = `${datasetSlug}/${branchOrCommit}/assets/${asset}`;
 
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
       queryString: ctx.queryString, 
-      errors: errors(datasetSlug, branchOrCommit), 
+      type: "asset",
       redirectPrefix: `/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
@@ -139,8 +160,14 @@ export default function initRoutes(api) {
         const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
 
         const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
-        Log.info("302 Serving asset from a resolved path:", assetPath);
-        recordEvent(`${datasetSlug}/${branchOrCommit}/assets/${asset}`, {type: "asset", status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, datasetSlug, branch, commit});
+        
+        const event = retrieveEvents(eventKey); 
+        if (!event.count)
+          Log.info(`NEW Query reached the reader, serving asset of ${datasetSlug}/${branch} from resolved path:`, assetPath);
+        else
+          Log.info(`Familiar asset query reached the reader, count: ${event.count}`);
+
+        recordEvent(eventKey, {type: "asset", status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, datasetSlug, branch, commit});
 
         return redirect(assetPath);
       }
@@ -167,7 +194,7 @@ export default function initRoutes(api) {
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
       queryString: queryString, 
-      errors: errors(datasetSlug, branchOrCommit), 
+      type: "query",
       redirectPrefix: `/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 
