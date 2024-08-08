@@ -6,13 +6,46 @@ const expect = chai.expect;
 
 //Get latest commits
 const response = await request(app.callback()).get('/status');
-const availableDatasets = JSON.parse(response.text).availableDatasets;
-const countryFlagsLatestCommit = availableDatasets["country-flags"].master.substr(0,7);
-const sgMasterLatestCommit = availableDatasets["sg-master"].master.substr(0,7);
+const status = JSON.parse(response.text);
+
+const countryFlagsLatestFullCommit = status.availableDatasets["country-flags"].master;
+const sgMasterLatestFullCommit = status.availableDatasets["sg-master"].master;
+
+const countryFlagsLatestCommit = countryFlagsLatestFullCommit.substr(0,7);
+const sgMasterLatestCommit = sgMasterLatestFullCommit.substr(0,7);
 
 //Global after hook to stop server after running tests
 after(done => {
     server.close(done);
+});
+
+describe('API Routes: STATUS', () => {
+    it('Status has server info', async () => {
+        expect(status).to.have.nested.property('server.name', 'small-waffle');
+    });
+    it('Status has reader info', async () => {
+        expect(status).to.have.nested.property('server.DDFCSVReaderVersionInfo.package.name', "@vizabi/reader-ddfcsv");
+    });
+    it('Status has country-flags as one of the allowedDatasets', async () => {
+        expect(status.allowedDatasets).to.deep.include({
+            slug: "country-flags",
+            id: "open-numbers/ddf--gapminder--country_flag_svg",
+            branches: ["master"],
+            default_branch: ""
+        });
+    });
+    it('Status has country-flags as one of the availableDatasets', async () => {
+        expect(status.availableDatasets).to.have.nested.property("country-flags.master", countryFlagsLatestFullCommit);
+    });
+});
+
+
+describe('API Routes: SYNC', () => {
+    it('Sync one dataset country-flags', async () => {
+        const response = await request(app.callback()).get("/sync/country-flags");
+        expect(response.status).to.equal(200);
+        expect(response.body).to.have.property('status', 'Sync successful for country-flags');
+    });
 });
 
 describe('API Routes: INFO', () => {
@@ -181,7 +214,7 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause couldn't be empty");
     });
-    it('Unknown DDFCSV reader error', async () => {
+    it('Deliberate crash to create a 500 error', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_test500error:true&select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(500);
         expect(response.text).to.include('Internal Server Error');
