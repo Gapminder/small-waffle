@@ -183,19 +183,19 @@ describe('API Routes: DATA', () => {
         const response = await request(app.callback()).get(`/sg-master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(sgMasterLatestCommit+"?_select_key");
+        expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Redirect when version is unknown', async () => {
         const response = await request(app.callback()).get(`/sg-master/unknown?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(sgMasterLatestCommit+"?_select_key");
+        expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Redirect when version is a known branch', async () => {
         const response = await request(app.callback()).get(`/sg-master/master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(sgMasterLatestCommit+"?_select_key");
+        expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Successful case', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);

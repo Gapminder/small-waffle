@@ -17,7 +17,7 @@ export default async function redirectLogic({params, queryString, errors, redire
         const [status, shortMessage, messageExtra] = knownError;
         Log.error(`${status} ${shortMessage}`);
         return {status, error: `${shortMessage} ${messageExtra}`};
-      } else if (err.includes("Too many query structure errors:")) {
+      } else if (typeof err === "string" && err.includes("Too many query structure errors:")) {
         // hardcoded known error from ddf-query-validator inside DDFCSV reader
         Log.error(`${400} ${err}`);
         return {status: 400, error: `${err}`};

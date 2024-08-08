@@ -167,7 +167,7 @@ export default function initRoutes(api) {
       params: ctx.params, 
       queryString: queryString, 
       errors: errors(datasetSlug, branchOrCommit), 
-      redirectPrefix: `/info/${datasetSlug}/`,
+      redirectPrefix: `/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 
           return "NO_QUERY_PROVIDED";
