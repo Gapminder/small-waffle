@@ -1,12 +1,12 @@
 {
   "name": "small-waffle",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "export PORT=4444 && export VERBOSITY=4 && nodemon index.js --ignore datasets/",
-    "serve": "export PORT=3333 && export VERBOSITY=2 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log",
+    "serve": "export PORT=3333 && export VERBOSITY=2 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log --node-args=\"--max-old-space-size=6144\"",
     "test": "export PORT=4444 && export VERBOSITY=0 && mocha",
     "build": "echo 'No build step required for serverless functions'"
   },
