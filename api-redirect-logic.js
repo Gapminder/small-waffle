@@ -4,7 +4,7 @@ import {
     getDefaultCommit,
   } from "./datasetManagement.js";
 
-import { recordEvent } from "./event-analytics.js";
+import { recordEvent, retrieveEvents } from "./event-analytics.js";
 import errors from "./api-errors.js";
 
 import Log from "./logger.js"
@@ -21,24 +21,26 @@ export default async function redirectLogic({params, queryString, type, redirect
 
     function error(err, datasetSlug, branchOrCommit){
       const knownError = knownErrors[err];
+      const event = retrieveEvents(eventKey); 
+      const log = !event.count ? Log.error : Log.debug;
 
       if (!err.stack && knownError && knownError.length === 3) {
         // known error
         const [status, shortMessage, messageExtra] = knownError;
-        Log.error(`${status} ${shortMessage}`);
+        log(`${status} ${shortMessage}`);
         recordEvent(eventKey, {type, status, comment: shortMessage, datasetSlug, branchOrCommit});
         return {status, error: `${shortMessage} ${messageExtra}`};
 
       } else if (typeof err === "string" 
         && (err.includes("Too many query structure errors") || err.includes("Too many query definition errors"))) {        
         // hardcoded known error from ddf-query-validator inside DDFCSV reader
-        Log.error(`${400} ${err}`);
+        log(`${400} ${err}`);
         recordEvent(eventKey, {type, status: 400, comment: err, datasetSlug, branchOrCommit});
         return {status: 400, error: `${err}`};
 
       } else {
         // unknown error
-        Log.error(err, err.stack);
+        log(err, err.stack);
         recordEvent(eventKey, {type, status: 500, comment: err.message ? err.message : err, datasetSlug, branchOrCommit});
         return {status: 500, error: err.message ? err.message : err};
       }
