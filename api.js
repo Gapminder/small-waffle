@@ -18,6 +18,8 @@ import { allowedDatasets } from "./allowedDatasets.js";
 
 import Log from "./logger.js"
 
+const liveSince = (new Date()).valueOf();
+
 export default function initRoutes(api) {
 
   api.get("/events", async (ctx, next) => {
@@ -34,10 +36,13 @@ export default function initRoutes(api) {
     if (!datasetSlug) {
       Log.debug("Received a list all (public) datasets request");
 
+      const uptime_ms = (new Date()).valueOf() - liveSince;
+
       ctx.status = 200; //not cached through cloudflare cache rule
       ctx.body = JSON.stringify({
         server: {
           name: "small-waffle",
+          uptime_ms,
           smallWaffleVersion: process.env.npm_package_version,
           DDFCSVReaderVersion: DDFCsvReader.version,
           DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo

@@ -8,6 +8,8 @@ import {
 import initRoutes from "./api.js";
 import Log from "./logger.js"
 
+Log.time("spinup time");
+
 const port = process.env.PORT || 3333;
 
 Log.info("Starting small-waffle on PORT " + port);
@@ -23,5 +25,7 @@ app.use(serve('datasets'));
 app.use(api.routes());
 
 const server = app.listen(port);
+
+Log.timeEnd("spinup time");
 
 export { app, server };
