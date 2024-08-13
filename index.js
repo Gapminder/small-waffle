@@ -7,10 +7,24 @@ import {
 } from "./datasetManagement.js";
 import initRoutes from "./api.js";
 import Log from "./logger.js"
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from "fs";
+
+const environment = process.env.ENV || 'prod';
+const dotenvPath = path.resolve(process.cwd(), `.env.${environment}`);
+
+if (!fs.existsSync(dotenvPath)) {
+  throw new Error(`Environment file not found: ${dotenvPath}`);
+}
+
+dotenv.config({ path: dotenvPath });
+
+Log.debug({"env": process.env});
 
 Log.time("spinup time");
 
-const port = process.env.PORT || 3333;
+const port = process.env.PORT;
 
 Log.info("Starting small-waffle on PORT " + port);
 

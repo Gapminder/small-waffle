@@ -8,10 +8,10 @@ export let allowedDatasets = [];
 //   {slug: "billy-master", id: "open-numbers/ddf--gapminder--billionaires"},
 // ]
 
-const spreadsheetId = process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_ID;
-const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
-
 export async function updateAllowedDatasets() {
+  const spreadsheetId = process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_ID;
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+
   Log.info(`Updating allowed datasets from a google spreadsheet`, csvUrl.replace("/export?format=csv", ""))
   const response = await fetch(csvUrl);
 

@@ -1,5 +1,15 @@
 # small-waffle
 
+## Setup
+
+Copy .env.example to .env.dev and fill in the values.
+
+```bash
+cp .env.example .env.dev
+```
+
+
+## URls
 //entity request
 http://localhost:3333/fasttrack/master?_language=en&select_key@=geo;&value@=world/_4region&=is--world/_4region;;&from=entities&where_$or@_un/_state:true
 http://localhost:3333/fasttrack/23e4dd45525ad1d0b7344f4935b7191972cf2ba1?_language=en&select_key@=geo;&value@=world/_4region&=is--world/_4region;;&from=entities&where_$or@_un/_state:true

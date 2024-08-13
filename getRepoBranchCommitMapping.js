@@ -1,7 +1,5 @@
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
 
-dotenv.config();
 const githubToken = process.env.GITHUB_TOKEN;
 
 async function fetchLatestCommit(datasetId, branch, token) {
