@@ -9,6 +9,7 @@ import {
   cleanupAllDirectories
 } from "./updateFilesOnDisk.js";
 import { updateAllowedDatasets, allowedDatasets } from "./allowedDatasets.js";
+import { purgeCloudflareCache } from "./purgeCloudflareCache.js";
 import Log from "./logger.js"
 
 const rootPath = path.resolve("./datasets/");
@@ -112,6 +113,11 @@ export async function syncDataset(datasetSlug) {
 
     await loadReaderInstances(dataset, branchCommitMapping)
     Log.info(`Sync successful for dataset ${datasetSlug}`);
+
+    const urlsToPurge = [`${process.env.BASE_URL}/status/${dataset.slug}`];
+    await purgeCloudflareCache(urlsToPurge);
+    Log.info(`Cloudflare cache possible purged for dataset ${datasetSlug}`);
+
   } catch (err) {
     Log.error('Error updating files on disk:', err);
   }
