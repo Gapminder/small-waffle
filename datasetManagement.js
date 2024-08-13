@@ -109,12 +109,12 @@ export async function syncDataset(datasetSlug) {
   try {
     await updateFilesOnDisk(rootPath, dataset.id, branchCommitMapping)
     Log.info('Files on disk updated successfully.');
+
+    await loadReaderInstances(dataset, branchCommitMapping)
+    Log.info(`Sync successful for dataset ${datasetSlug}`);
   } catch (err) {
     Log.error('Error updating files on disk:', err);
   }
-  await loadReaderInstances(dataset, branchCommitMapping)
-
-  Log.info(`Sync successful for dataset ${datasetSlug}`);
 }
 
 export async function loadDataset(datasetSlug) {
