@@ -5,8 +5,8 @@ import {
   datasetVersionReaderInstances,
   syncAllDatasets,
   getBranchFromCommit,
-  syncDataset,
-  getAllowedDatasetEntryFromSlug
+  syncDatasets,
+  getAllowedDatasetEntryFromSlug,
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
@@ -90,7 +90,7 @@ export default function initRoutes(api) {
       result = await syncAllDatasets();
     } else {
       Log.info("Received a request to sync dataset: " + datasetSlug);
-      result = await syncDataset(datasetSlug);
+      result = await syncDatasets([datasetSlug]);
     }
     ctx.status = 200; 
     ctx.body = {status: result};

@@ -55,21 +55,25 @@ export function getDefaultCommit(datasetSlug){
 }
 
 
-export async function syncAllDatasets() {
-  await updateAllowedDatasets();
-  const datasetListString = allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : "";
-  Log.info(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
+export async function syncDatasets(datasets) {
+  const datasetListString = datasets.length > 0 ? datasets.map(m => m.slug).join(", ") : "";
+  Log.info(`Got info about ${datasets.length} datasets: ${datasetListString}`);
 
-  cleanupAllDirectories(rootPath, allowedDatasets);
-
-  for (const dataset of allowedDatasets)
+  for (const dataset of datasets)
     await syncDataset(dataset.slug);
 
   Log.info(`
   🟢 Sync complete!
   `);
 
-  return `🟢 Sync complete for ${allowedDatasets.length} datasets: ${datasetListString}`;
+  return `🟢 Sync complete for ${datasets.length} datasets: ${datasetListString}`;
+}
+
+export async function syncAllDatasets() {
+  await updateAllowedDatasets();
+
+  cleanupAllDirectories(rootPath, allowedDatasets);
+  return syncDatasets(allowedDatasets);
 }
 
 
@@ -111,7 +115,6 @@ export async function syncDataset(datasetSlug) {
   await loadReaderInstances(dataset, branchCommitMapping)
 
   Log.info(`Sync successful for dataset ${datasetSlug}`);
-  return(`Sync successful for ${datasetSlug}`);
 }
 
 export async function loadDataset(datasetSlug) {
