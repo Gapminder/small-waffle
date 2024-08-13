@@ -114,12 +114,16 @@ export async function syncDataset(datasetSlug) {
     await loadReaderInstances(dataset, branchCommitMapping)
     Log.info(`Sync successful for dataset ${datasetSlug}`);
 
-    const urlsToPurge = [`${process.env.BASE_URL}/status/${dataset.slug}`];
-    await purgeCloudflareCache(urlsToPurge);
-    Log.info(`Cloudflare cache possible purged for dataset ${datasetSlug}`);
+    if (process.env.ENV === 'prod') {
+      const urlsToPurge = [`${process.env.BASE_URL}/status/${dataset.slug}`];
+      await purgeCloudflareCache(urlsToPurge);
+      Log.info(`Cloudflare cache purged for dataset ${datasetSlug}`);
+    } else {
+      Log.info(`Cloudflare cache not purged for dataset ${datasetSlug} (dev environment)`);
+    }
 
   } catch (err) {
-    Log.error('Error updating files on disk:', err);
+    Log.error('Error syncing dataset:', err);
   }
 }
 

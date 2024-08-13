@@ -9,31 +9,26 @@ export const purgeCloudflareCache = async (urlsToPurge) => {
   const email = process.env.CLOUDFLARE_EMAIL;
 
   if (!zoneId || !apiKey || !email) {
-    console.error('Missing Cloudflare environment variables');
-    return;
+    throw new Error('Cloudflare environment variables not set');
   }
 
-  try {
-    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
-      method: 'POST',
-      headers: {
-        'X-Auth-Email': email,
-        'X-Auth-Key': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        files: urlsToPurge,
-      }),
-    });
+  const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+    method: 'POST',
+    headers: {
+      'X-Auth-Email': email,
+      'X-Auth-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      files: urlsToPurge,
+    }),
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (data.success) {
-      console.log('Cache purged successfully:', data);
-    } else {
-      console.error('Failed to purge cache:', data.errors);
-    }
-  } catch (error) {
-    console.error('Error purging cache:', error);
+  if (data.success) {
+    console.log('Cache purged successfully:', data);
+  } else {
+    console.error('Failed to purge cache:', data.errors);
   }
 };
