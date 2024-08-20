@@ -211,21 +211,21 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('internet_users');
-        expect(response.body).to.have.property('rows').that.deep.include(['chn', 1998, 0.16854]);
+        expect(response.body).to.have.property('rows').that.deep.include(["chn", 1998, 0.16854]);
     });
     it('Successful case - datapoints', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=gender&=time;&value@=literacy/_rate/_adult;;&from=datapoints&where_time=2011`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('literacy_rate_adult');
-        expect(response.body).to.have.property('rows').that.deep.include(["arm", 0, 2011, 99.71]);
+        expect(response.body).to.have.property('rows').that.deep.include(["arm", "0", 2011, 99.71]);
     });
     it('Successful case - datapoints large', async () => {
         const response = await request(app.callback()).get(`/population-master/${popMasterLatestFullCommit}?_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
-        expect(response.body).to.have.property('rows').that.deep.include(['chn', 25, 1, 2008, 10886686]);
+        expect(response.body).to.have.property('rows').that.deep.include(["chn", "25", "1", 2008, 10886686]);
     });
     it('DDFCSV ddf-query-validator error - invalid "from" clause', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
