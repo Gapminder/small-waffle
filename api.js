@@ -104,6 +104,7 @@ export default function initRoutes(api) {
     
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
+    const referer = ctx.request.headers['referer']; 
     
     Log.debug(`Received an info request for ${datasetSlug}/${branchOrCommit}`);
 
@@ -111,6 +112,7 @@ export default function initRoutes(api) {
       params: ctx.params, 
       queryString: ctx.queryString, 
       type: "info",
+      referer,
       redirectPrefix: `/info/${datasetSlug}/`,
       callback: async ({success, error})=>{
         const commit = branchOrCommit;
@@ -143,12 +145,14 @@ export default function initRoutes(api) {
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
     const asset = ctx.params.asset;
-    const eventKey = `${datasetSlug}/${branchOrCommit}/assets/${asset}`;
+    const referer = ctx.request.headers['referer']; 
+    const eventTemplate = {type: "asset", asset, datasetSlug, branchOrCommit, referer};
 
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
       queryString: ctx.queryString, 
       type: "asset",
+      referer,
       redirectPrefix: `/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
@@ -160,14 +164,8 @@ export default function initRoutes(api) {
         const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
 
         const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
-        
-        const event = retrieveEvents(eventKey); 
-        if (!event.count)
-          Log.info(`NEW Query reached the reader, serving asset of ${datasetSlug}/${branch} from resolved path:`, assetPath);
-        else
-          Log.debug(`Familiar asset query reached the reader, count: ${event.count}`);
 
-        recordEvent(eventKey, {type: "asset", status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, datasetSlug, branch, commit});
+        recordEvent({...eventTemplate, status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit});
 
         return redirect(assetPath);
       }
@@ -188,13 +186,14 @@ export default function initRoutes(api) {
     const datasetSlug = ctx.params.datasetSlug;
     const branchOrCommit = ctx.params.branchOrCommit;
     const queryString = ctx.querystring;
-    const eventKey = `${datasetSlug}/${branchOrCommit}?${queryString}`;
-
+    const referer = ctx.request.headers['referer']; 
+    const eventTemplate = {type: "query", datasetSlug, branchOrCommit, queryString, referer};
 
     const {status, error, redirect, success} = await redirectLogic({
       params: ctx.params, 
       queryString: queryString, 
       type: "query",
+      referer,
       redirectPrefix: `/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 
@@ -218,12 +217,6 @@ export default function initRoutes(api) {
         if (!readerInstance) 
           return error("NO_READER_INSTANCE");
 
-        const event = retrieveEvents(eventKey); 
-        if (!event.count)
-          Log.info("NEW Query reached the reader", eventKey);
-        else
-          Log.debug(`Familiar query reached the reader, count: ${event.count}`);
-          
         try {
           const ddfQuery = Urlon.parse(decodeURIComponent(queryString));
 
@@ -231,10 +224,10 @@ export default function initRoutes(api) {
             throw "Deliberate 500 error";
 
           const data = await readerInstance.read(ddfQuery);
-          recordEvent(eventKey, {type: "query", status: "200", comment: "Query resolved", datasetSlug, branch, commit});
+          recordEvent({...eventTemplate, status: "200", comment: "Query resolved", branch, commit});
           return success(data);
         } catch (err) {
-          recordEvent(eventKey, {type: "query", status: "500", comment: err.message, datasetSlug, branch, commit});
+          //recordEvent({...eventTemplate, status: "500", comment: err.message, branch, commit});
           return error(err);
         }
 
