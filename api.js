@@ -165,7 +165,7 @@ export default function initRoutes(api) {
 
         const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
 
-        recordEvent({...eventTemplate, status: "302", comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit});
+        recordEvent({...eventTemplate, status: 302, comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit});
 
         return redirect(assetPath);
       }
@@ -224,10 +224,9 @@ export default function initRoutes(api) {
             throw "Deliberate 500 error";
 
           const data = await readerInstance.read(ddfQuery);
-          recordEvent({...eventTemplate, status: "200", comment: "Query resolved", branch, commit});
+          recordEvent({...eventTemplate, status: 200, comment: "Query resolved", branch, commit});
           return success(data);
         } catch (err) {
-          //recordEvent({...eventTemplate, status: "500", comment: err.message, branch, commit});
           return error(err);
         }
 
