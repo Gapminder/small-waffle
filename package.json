@@ -7,7 +7,7 @@
   "scripts": {
     "start": "export PORT=4444 && export VERBOSITY=4 && nodemon index.js --ignore datasets/",
     "serve": "export PORT=3333 && export VERBOSITY=2 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log --node-args=\"--max-old-space-size=6144\"",
-    "test": "export PORT=4444 && export VERBOSITY=0 && mocha",
+    "test": "export PORT=4444 && export VERBOSITY=0 && mocha --timeout 3000",
     "build": "echo 'No build step required for serverless functions'"
   },
   "author": "",
@@ -18,15 +18,12 @@
     "csv-parser": "^3.0.0",
     "dotenv": "^16.4.5",
     "isomorphic-git": "^1.25.10",
-    "itty-router": "^5.0.17",
     "koa": "^2.15.3",
     "koa-compress": "^5.1.1",
     "koa-router": "^12.0.1",
     "koa-static": "^5.0.0",
     "node-fetch": "^3.3.2",
-    "simple-git": "^3.25.0",
-    "urlon": "^2.1.0",
-    "uuid": "^10.0.0"
+    "urlon": "^2.1.0"
   },
   "devDependencies": {
     "chai": "^5.1.1",
