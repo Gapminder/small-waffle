@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "export PORT=4444 && export VERBOSITY=4 && nodemon index.js --ignore datasets/",
-    "serve": "export PORT=3333 && export VERBOSITY=2 && pm2 start index.js --name small-waffle --time --output ~/logs/output.log --error ~/logs/error.log --node-args=\"--max-old-space-size=6144\"",
+    "serve": "pm2 start pm2.config.cjs",
     "test": "export PORT=4444 && export VERBOSITY=0 && mocha --timeout 3000",
     "build": "echo 'No build step required for serverless functions'"
   },
