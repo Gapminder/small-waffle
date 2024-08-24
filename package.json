@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "export PORT=4444 && export VERBOSITY=4 && nodemon index.js --ignore datasets/",
+    "start": "export PORT=4444 && export VERBOSITY=4 && nodemon index.js --ignore datasets/ --ignore events/",
     "serve": "pm2 start pm2.config.cjs",
-    "test": "export PORT=4444 && export VERBOSITY=0 && mocha --timeout 3000",
+    "test": "export PORT=4444 && export VERBOSITY=0 && export EVENTFILENAME=test && mocha --timeout 2000",
     "build": "echo 'No build step required for serverless functions'"
   },
   "author": "",
@@ -22,6 +22,7 @@
     "koa-compress": "^5.1.1",
     "koa-router": "^12.0.1",
     "koa-static": "^5.0.0",
+    "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
     "urlon": "^2.1.0"
   },

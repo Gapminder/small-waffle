@@ -6,6 +6,7 @@ import compress from "koa-compress";
 import {
   loadAllDatasets,
 } from "./datasetManagement.js";
+import {loadEventsFromFile} from "./event-analytics.js";
 import initRoutes from "./api.js";
 import { getHeapStatistics } from 'v8';
 import Log from "./logger.js";
@@ -30,6 +31,7 @@ const app = new Koa();
 const api = new Router(); // routes for the main API
 
 await loadAllDatasets();
+await loadEventsFromFile();
 initRoutes(api);
 
 app.use(compress());

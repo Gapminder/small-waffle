@@ -10,7 +10,7 @@ import {
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
-import { recordEvent, retrieveEvents } from "./event-analytics.js";
+import { recordEvent, retrieveEvents, backupEvents } from "./event-analytics.js";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
@@ -29,6 +29,17 @@ export default function initRoutes(api) {
     Log.debug("Received a request to list all events");
     ctx.status = 200; //not cached through cloudflare cache rule
     ctx.body = JSON.stringify(retrieveEvents());
+  });
+
+  /*
+  * Backup events
+  */
+  api.get("/backupevents/:filename([-a-z_0-9]+)?", async (ctx, next) => {
+    Log.debug("Received a request to backup events");
+    let filename = ctx.params.filename;
+    ctx.status = 200; //not cached through cloudflare cache rule
+    const backupStatus = await backupEvents({filename});
+    ctx.body = JSON.stringify(backupStatus);
   });
 
   /*

@@ -1,7 +1,10 @@
 // Importing the crypto module with ES6 syntax
 import crypto from 'crypto';
 import Log from "./logger.js";
-const requestMap = new Map();
+import {promises as fs, existsSync, mkdirSync} from 'fs';
+import path from 'path';
+import cron from 'node-cron';
+let requestMap = new Map();
 
 // Function to create an MD5 hash
 function createMD5Hash(input) {
@@ -63,3 +66,50 @@ export function retrieveEvents(params){
     return requestMap.get(key(params)) || [...requestMap.entries()];
 }
 
+
+const backupFilePath = path.resolve("./events/");
+let backupFileLock = false;
+
+async function ensurePathExists(){
+  if (!existsSync(backupFilePath)) mkdirSync(backupFilePath, { recursive: true });
+}
+
+export async function backupEvents({filename = "backup", date = false} = {}) {
+  ensurePathExists();
+  const dateFormat = () => new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const fileName = path.join(backupFilePath, `${filename}${date ? "_" + dateFormat() : ""}.json`);
+
+  if (backupFileLock) return;
+  try {
+    await fs.writeFile( fileName, JSON.stringify([...requestMap.entries()]) );
+    const status = `Event backup with ${requestMap.size} events saved successfully to ${fileName}`;
+    Log.info(status);
+    return ({status})
+  } catch (error) {
+    Log.error('Failed to save hourly backup:', error);
+    return ({status: `Failed to save hourly backup`})
+  }
+}
+
+export async function loadEventsFromFile({filename = "backup"} = {}){
+  if (process.env.EVENTFILENAME) filename = process.env.EVENTFILENAME;
+  ensurePathExists();
+  backupFileLock = true;
+  const fileName = path.join(backupFilePath, `${filename}.json`);
+  try {
+    const data = await fs.readFile(fileName, { encoding: 'utf8' });
+    const entries = JSON.parse(data);
+    requestMap = new Map(entries);
+    backupFileLock = false;
+    Log.info(`Backup loaded successfully wtith ${requestMap.size} events`);
+  } catch (error) {
+    backupFileLock = false;
+    Log.error(`Failed to load event backup from ${fileName}`, error);
+  }
+}
+
+// Every hour at minute 0
+cron.schedule('0 * * * *', () => backupEvents());
+
+// Every day at 23:59
+cron.schedule('59 23 * * *', () => backupEvents({date: true}));
