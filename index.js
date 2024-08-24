@@ -7,6 +7,7 @@ import {
   loadAllDatasets,
 } from "./datasetManagement.js";
 import initRoutes from "./api.js";
+import { getHeapStatistics } from 'v8';
 import Log from "./logger.js";
 
 
@@ -38,5 +39,23 @@ app.use(api.routes());
 const server = app.listen(port);
 
 Log.timeEnd("spinup time");
+
+
+
+async function checkMemoryUsage() {
+  const { heapTotal } = process.memoryUsage();
+  const { heap_size_limit } = getHeapStatistics();
+  const heapTotal_PCT = Math.round(heapTotal / heap_size_limit * 100);
+
+  Log.debug(`Current heap usage: ${heapTotal_PCT}% of limit`);
+
+  if (heapTotal_PCT > 50) {
+      Log.error('===== Reloading datasets because heap is above 90% of the limit! ======');
+      await loadAllDatasets();
+  }
+}
+
+setInterval(checkMemoryUsage, 60000); // Checks memory usage every minute
+
 
 export { app, server };
