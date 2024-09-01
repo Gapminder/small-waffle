@@ -51,7 +51,7 @@ async function checkMemoryUsage() {
 
   Log.debug(`Current heap usage: ${heapTotal_PCT}% of limit`);
 
-  if (heapTotal_PCT > 50) {
+  if (heapTotal_PCT > 90) {
       Log.error('===== Reloading datasets because heap is above 90% of the limit! ======');
       await loadAllDatasets();
   }
