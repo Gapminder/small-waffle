@@ -27,7 +27,7 @@ function logstring({status, type, asset, datasetSlug, branchOrCommit, queryStrin
 }
 
 function getLogLevel(status, newEvent){
-    if (status === 200 || status === 302)
+    if (!status || status === 200 || status === 302)
         return newEvent ? "info" : "debug";
     
     return newEvent ? "error" : "debug";
