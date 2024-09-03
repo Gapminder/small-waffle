@@ -109,7 +109,13 @@ export async function loadEventsFromFile({filename = "backup"} = {}){
 }
 
 // Every hour at minute 0
-cron.schedule('0 * * * *', () => backupEvents());
+cron.schedule('0 * * * *', () => backupEvents({filename: "hourly"}));
 
 // Every day at 23:59
-cron.schedule('59 23 * * *', () => backupEvents({date: true}));
+cron.schedule('59 23 * * *', () => backupEvents({filename: "daily"}));
+
+// At 01:01 AM, only on Monday
+cron.schedule('1 1 * * 1', () => backupEvents({filename: "weekly"}));
+
+// At 01:02 AM, on day 1 of the month
+cron.schedule('2 1 1 * *', () => backupEvents({filename: "monthly"}));

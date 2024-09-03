@@ -36,7 +36,7 @@ export default function initRoutes(api) {
   */
   api.get("/backupevents/:filename([-a-z_0-9]+)?", async (ctx, next) => {
     Log.debug("Received a request to backup events");
-    let filename = ctx.params.filename;
+    let filename = ctx.params.filename || "manual";
     ctx.status = 200; //not cached through cloudflare cache rule
     const backupStatus = await backupEvents({filename});
     ctx.body = JSON.stringify(backupStatus);
