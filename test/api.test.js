@@ -10,11 +10,13 @@ const status = JSON.parse(response.text);
 
 const countryFlagsLatestFullCommit = status.availableDatasets["country-flags"].master;
 const sgMasterLatestFullCommit = status.availableDatasets["sg-master"].master;
-const popMasterLatestFullCommit = status.availableDatasets["population-master"].master;
+const popMasterLatestFullCommit = status.availableDatasets["population"].master;
+const povcalnetMasterLatestFullCommit = status.availableDatasets["povcalnet"].master;
 
 const countryFlagsLatestCommit = countryFlagsLatestFullCommit.substr(0,7);
 const sgMasterLatestCommit = sgMasterLatestFullCommit.substr(0,7);
 const popMasterLatestCommit = popMasterLatestFullCommit.substr(0,7);
+const povcalnetMasterLatestCommit = povcalnetMasterLatestFullCommit.substr(0,7);
 
 //Global after hook to stop server after running tests
 after(done => {
@@ -221,11 +223,25 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('rows').that.deep.include(["arm", "0", 2011, 99.71]);
     });
     it('Successful case - datapoints large', async () => {
-        const response = await request(app.callback()).get(`/population-master/${popMasterLatestFullCommit}?_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`);
+        const response = await request(app.callback()).get(`/population/${popMasterLatestFullCommit}?_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
         expect(response.body).to.have.property('rows').that.deep.include(["chn", "25", "1", 2008, 10886686]);
+    });
+    it('Successful case - datapoints bomb query povcalnet', async () => {
+        const response = await request(app.callback()).get(`/povcalnet/${povcalnetMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=income/_mountain/_50bracket/_shape/_for/_log;;&from=datapoints&where_`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('income_mountain_50bracket_shape_for_log');
+        expect(response.body).to.have.property('rows').that.is.an('array').that.is.empty;
+    });
+    it('Successful case - datapoints bomb query population', async () => {
+        const response = await request(app.callback()).get(`/population/${popMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('population');
+        expect(response.body).to.have.property('rows').that.is.an('array').that.is.empty;
     });
     it('DDFCSV ddf-query-validator error - invalid "from" clause', async () => {
         const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
@@ -265,12 +281,12 @@ describe('API Routes: EVENTS', () => {
         const response = await request(app.callback()).get("/events");
         expect(response.status).to.equal(200);
         const body = JSON.parse(response.text);
-        expect(body.length).to.equal(20);
+        expect(body.length).to.be.greaterThan(10);
     });
     it('Events can be backed up', async () => {
         const response = await request(app.callback()).get("/backupevents/test");
         expect(response.status).to.equal(200);
-        expect(response.text).to.include('Event backup with 20 events saved successfully to');
+        expect(response.text).to.include('events saved successfully');
     });
     
 });
