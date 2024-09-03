@@ -234,8 +234,24 @@ export default function initRoutes(api) {
           if (ddfQuery.test500error)
             throw "Deliberate 500 error";
 
+          if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "population" || datasetSlug == "povcalnet") ) {
+            recordEvent({...eventTemplate, status: 0, comment: "Bomb query, empty response", branch, commit});
+            return success({
+              header: ddfQuery.select.key.concat(ddfQuery.select.value),
+              rows: [],
+              version: "",
+              comment: "👋 this is not the query you are looking for"
+            })
+          }
+
+          const eventCount = recordEvent({...eventTemplate, comment: "Query to reader", branch, commit});
+          const queryLogText = `200 --- Resolved --- ${datasetSlug}/${branch}/${commit}?${queryString}`;
+          if(eventCount === 1) Log.time(queryLogText);
+          
+          //ACTUAL READER WORK IS HERE
           const data = await readerInstance.read(ddfQuery);
-          recordEvent({...eventTemplate, status: 200, comment: "Query resolved", branch, commit});
+
+          if(eventCount === 1) Log.timeEnd(queryLogText);
           return success(data);
         } catch (err) {
           return error(err);

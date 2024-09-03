@@ -20,9 +20,10 @@ function key({type="", asset="", datasetSlug="", branchOrCommit="", queryString=
 function logstring({status, type, asset, datasetSlug, branchOrCommit, queryString, referer, comment}){
     const branch = branchOrCommit? "/"+branchOrCommit : "";
     const query = queryString? "?"+queryString : "";
+    const statusText = status? status + " --- " : "";
     return type === "asset" 
-        ? `${status} --- ${comment} --- ${datasetSlug}${branch}/assets/${asset} --- ref: ${referer} `
-        : `${status} --- ${comment} --- ${datasetSlug}${branch}${query} --- ref: ${referer}`;
+        ? `${statusText}${comment} --- ${datasetSlug}${branch}/assets/${asset} --- ref: ${referer} `
+        : `${statusText}${comment} --- ${datasetSlug}${branch}${query} --- ref: ${referer}`;
 }
 
 function getLogLevel(status, newEvent){
