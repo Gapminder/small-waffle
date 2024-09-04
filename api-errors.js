@@ -1,4 +1,4 @@
-export default function errors(datasetSlug, branchOrCommit) {
+export default function errors(datasetSlug, branch, commit) {
   return {
     NO_DATASET_GIVEN: [
       400,
@@ -22,7 +22,7 @@ export default function errors(datasetSlug, branchOrCommit) {
     ],
     NO_READER_INSTANCE: [
       500,
-      `No reader instance found for ${datasetSlug}/${branchOrCommit}`,
+      `No reader instance found for ${datasetSlug}/${branch}/${commit}`,
       `Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
     ],
     NO_QUERY_PROVIDED: [

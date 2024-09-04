@@ -2,16 +2,17 @@ import {
     datasetBranchCommitMapping,
     getAllowedDatasetEntryFromSlug,
     getDefaultCommit,
+    getDefaultBranch
   } from "./datasetManagement.js";
 
 import { recordEvent } from "./event-analytics.js";
 import errors from "./api-errors.js";
 
 export default async function redirectLogic({params, queryString, type, referer="", redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
-    const {datasetSlug, branchOrCommit, asset} = params; 
-    const eventTemplate = {type, asset, datasetSlug, branchOrCommit, queryString, referer};
+    const {datasetSlug, branch, commit, asset} = params; 
+    const eventTemplate = {type, asset, datasetSlug, branch, commit, queryString, referer};
     
-    const knownErrors = errors(datasetSlug, branchOrCommit);
+    const knownErrors = errors(datasetSlug, branch, commit);
 
     function error(err, cacheControl = "no-store, max-age=0"){
       const knownError = knownErrors[err];
@@ -57,25 +58,27 @@ export default async function redirectLogic({params, queryString, type, referer=
     if (validationError)
       return error(validationError)
   
-    // Redirect if branchOrCommit not given (default branch)
-    // Redirect if branchOrCommit is unknown branch OR unknown commit
-    if (
-      !branchOrCommit
-      ||
-      !branchCommitMapping[branchOrCommit] && !Object.values(branchCommitMapping).find(f => f === branchOrCommit || f.substr(0,7) === branchOrCommit)
-    ) {
+    // Redirect if branch not given ot unknown
+    // Both cases to default branch and default commit
+    if (!branch || !branchCommitMapping[branch] ) {
+      const defaultBranch = getDefaultBranch(datasetSlug);
       const defaultCommit = getDefaultCommit(datasetSlug);
+      
+      if (defaultBranch === false || defaultCommit === false)
+        return error("DEFAULT_COMMIT_NOT_RESOLVED");
+  
+      return redirect(redirectPrefix + defaultBranch + "/" + defaultCommit.substr(0,7) + redirectSuffix);
+    }
+
+    // Redirect if commit not given ot unknown
+    // Both cases to default commit
+    if (!commit || !Object.values(branchCommitMapping).find(f => f === commit || f.substr(0,7) === commit) ) {
+      const defaultCommit = branchCommitMapping[branch];
       
       if (defaultCommit === false)
         return error("DEFAULT_COMMIT_NOT_RESOLVED");
   
-      return redirect(redirectPrefix + defaultCommit.substr(0,7) + redirectSuffix);
-    }
-  
-    // Redirect if branchOrCommit is a known branch
-    if (branchCommitMapping[branchOrCommit]) {
-      const commit = branchCommitMapping[branchOrCommit];
-      return redirect(redirectPrefix + commit.substr(0,7) + redirectSuffix);
+      return redirect(redirectPrefix + branch + "/" + defaultCommit.substr(0,7) + redirectSuffix);
     }
   
     //datasetSlug is allowed and found among datasets

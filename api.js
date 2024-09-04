@@ -121,13 +121,14 @@ export default function initRoutes(api) {
   /*
   * Get dataset info
   */
-  api.get("/info/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/info/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
     
     const datasetSlug = ctx.params.datasetSlug;
-    const branchOrCommit = ctx.params.branchOrCommit;
+    const branch = ctx.params.branch;
+    const commit = ctx.params.commit;
     const referer = ctx.request.headers['referer']; 
     
-    Log.debug(`Received an info request for ${datasetSlug}/${branchOrCommit}`);
+    Log.debug(`Received an info request for ${datasetSlug}/${branch}/${commit}`);
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -136,9 +137,7 @@ export default function initRoutes(api) {
       referer,
       redirectPrefix: `/info/${datasetSlug}/`,
       callback: async ({success, error})=>{
-        const commit = branchOrCommit;
-        const branch = getBranchFromCommit(datasetSlug, commit);
-      
+        
         const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
         if (!readerInstance) 
           return error("NO_READER_INSTANCE");
@@ -162,13 +161,19 @@ export default function initRoutes(api) {
   /*
   * Get assets
   */
-  api.get("/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)?", async (ctx, next) => {
+  api.get("/open-numbers/(.*)", async (ctx, next) => {
+    //koa-static failed to catch an /open-numbers route, so it came here
+    ctx.status = 404;
+    ctx.body = 'Asset not found';
+  });
+  api.get("/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)?", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
-    const branchOrCommit = ctx.params.branchOrCommit;
+    const branch = ctx.params.branch;
+    const commit = ctx.params.commit;
     const asset = ctx.params.asset;
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "asset", asset, datasetSlug, branchOrCommit, referer};
+    const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -181,8 +186,6 @@ export default function initRoutes(api) {
         return !asset ? "ASSET_NOT_PROVIDED" : false;
       },
       callback: async ({redirect})=>{
-        const commit = branchOrCommit;
-        const branch = getBranchFromCommit(datasetSlug, commit); 
         const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
 
         const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
@@ -205,13 +208,14 @@ export default function initRoutes(api) {
   /*
   * Get data
   */  
-  api.get("/:datasetSlug([-a-z_0-9]+)?/:branchOrCommit([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
-    const branchOrCommit = ctx.params.branchOrCommit;
+    const branch = ctx.params.branch;
+    const commit = ctx.params.commit;
     const queryString = ctx.querystring;
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "query", datasetSlug, branchOrCommit, queryString, referer};
+    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -234,9 +238,6 @@ export default function initRoutes(api) {
 
       
       callback: async ({success, error})=>{
-        const commit = branchOrCommit;
-        const branch = getBranchFromCommit(datasetSlug, commit);
-      
         const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
         if (!readerInstance) 
           return error("NO_READER_INSTANCE");
@@ -263,7 +264,7 @@ export default function initRoutes(api) {
 
           //ACTUAL READER WORK IS HERE
           const data = await readerInstance.read(ddfQuery);
-          //data.version = commit;
+          data.version = commit;
 
           const timeEnd = new Date().valueOf();
           const timing = timeEnd - timeStart;
@@ -286,6 +287,19 @@ export default function initRoutes(api) {
   });
 
 
+
+  // api.get("(.*)", async (ctx, next) => {
+  //   if (ctx.url.includes("#api0=true")) {
+  //     ctx.status = 404;
+  //     ctx.body = 'Not Found';
+  //     Log.error(`API catch-all route '*' has aborted infinite loop of API version upgrades after 1 iteration, request ${ctx.url} got a 404`);
+  //     return;
+  //   }
+  //   ctx.set('Cache-Control', "public, s-maxage=31536000, max-age=14400");
+  //   ctx.status = 302;
+  //   const separator = ctx.url.includes('?') ? '&' : '?';
+  //   ctx.redirect(`/api1${ctx.url}#api0=true`);
+  // });
 
   
   return api;

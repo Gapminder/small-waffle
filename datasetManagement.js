@@ -49,9 +49,14 @@ export function getAllowedDatasetEntryFromSlug(datasetSlug) {
 }
 
 export function getDefaultCommit(datasetSlug){
-  const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
+  const defaultBranch = getDefaultBranch(datasetSlug);
   const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
-  return dataset && branchCommitMapping ? branchCommitMapping[ dataset.default_branch || dataset.branches[0] ] : false;
+  return defaultBranch && branchCommitMapping ? branchCommitMapping[ defaultBranch ] : false;
+}
+
+export function getDefaultBranch(datasetSlug){
+  const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
+  return dataset ? dataset.default_branch || dataset.branches[0] : false;
 }
 
 

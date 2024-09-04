@@ -13,17 +13,18 @@ function createMD5Hash(input) {
     return hash.digest('hex');
 }
 
-function key({type="", asset="", datasetSlug="", branchOrCommit="", queryString="", referer=""} = {}){
-    return createMD5Hash(`${type} ${asset} ${datasetSlug} ${branchOrCommit} ${queryString} ${referer}`);
+function key({type="", asset="", datasetSlug="", branch="", queryString="", referer=""} = {}){
+    return createMD5Hash(`${type} ${asset} ${datasetSlug} ${branch} ${queryString} ${referer}`);
 }
 
-function logstring({status, type, asset, datasetSlug, branchOrCommit, queryString, referer, comment, timing}){
-    const branch = branchOrCommit? "/"+branchOrCommit : "";
-    const query = queryString? "?"+queryString : "";
+function logstring({status, type, asset, datasetSlug, branch, commit, queryString, referer, comment, timing}){
+    const branchText = branch? "/"+branch : "";
+    const commitText = commit? "/"+commit : "";
+    const queryText = queryString? "?"+queryString : "";
     const statusText = status? status + " --- " : "";
     return type === "asset" 
-        ? `${statusText}${comment} --- ${datasetSlug}${branch}/assets/${asset} --- ref: ${referer} `
-        : `${statusText}${comment}${timingText(timing)} --- ${datasetSlug}${branch}${query} --- ref: ${referer}`;
+        ? `${statusText}${comment} --- ${datasetSlug}${branchText}${commitText}/assets/${asset} --- ref: ${referer} `
+        : `${statusText}${comment}${timingText(timing)} --- ${datasetSlug}${branchText}${commitText}${queryText} --- ref: ${referer}`;
 }
 
 function timingText(timing){

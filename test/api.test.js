@@ -9,7 +9,7 @@ const response = await request(app.callback()).get('/status');
 const status = JSON.parse(response.text);
 
 const countryFlagsLatestFullCommit = status.availableDatasets["country-flags"].master;
-const sgMasterLatestFullCommit = status.availableDatasets["sg-master"].master;
+const sgMasterLatestFullCommit = status.availableDatasets["sg"].master;
 const popMasterLatestFullCommit = status.availableDatasets["population"].master;
 const povcalnetMasterLatestFullCommit = status.availableDatasets["povcalnet"].master;
 
@@ -63,26 +63,32 @@ describe('API Routes: INFO', () => {
         expect(response.status).to.equal(403);
         expect(response.text).to.include("Dataset not allowed");
     });
-    it('Redirect when version is not given', async () => {
+    it('Redirect when branch is not given', async () => {
         const response = await request(app.callback()).get('/info/country-flags');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include("/info/country-flags/" + countryFlagsLatestCommit);
+        expect(response.text).to.include("/info/country-flags/master/" + countryFlagsLatestCommit);
     });
-    it('Redirect when version is unknown', async () => {
+    it('Redirect when branch is unknown', async () => {
         const response = await request(app.callback()).get('/info/country-flags/unknownsomething');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include("/info/country-flags/" + countryFlagsLatestCommit);
+        expect(response.text).to.include("/info/country-flags/master/" + countryFlagsLatestCommit);
     });
-    it('Redirect when version is a known branch', async () => {
+    it('Redirect when branch is a known branch', async () => {
         const response = await request(app.callback()).get('/info/country-flags/master');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include("/info/country-flags/" + countryFlagsLatestCommit);
+        expect(response.text).to.include("/info/country-flags/master/" + countryFlagsLatestCommit);
+    });
+    it('Redirect when commit is unknown', async () => {
+        const response = await request(app.callback()).get('/info/country-flags/master/unknowncommit');
+        expect(response.status).to.equal(302);
+        expect(response.text).to.include('Redirecting to');
+        expect(response.text).to.include("/info/country-flags/master/" + countryFlagsLatestCommit);
     });
     it('Successful case - info', async () => {
-        const response = await request(app.callback()).get('/info/country-flags/'+countryFlagsLatestCommit);
+        const response = await request(app.callback()).get('/info/country-flags/master/'+countryFlagsLatestCommit);
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('name', 'ddf--gapminder--country_flag_svg');
     });
@@ -105,26 +111,32 @@ describe('API Routes: ASSETS', () => {
         expect(response.status).to.equal(403);
         expect(response.text).to.include("Dataset not allowed");
     });
-    it('Redirect when version is not given', async () => {
-        const response = await request(app.callback()).get('/sg-master/assets/world-50m.json');
+    it('Redirect when branch is not given', async () => {
+        const response = await request(app.callback()).get('/sg/assets/world-50m.json');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(sgMasterLatestCommit+"/assets/world-50m.json");
     });
-    it('Redirect when version is unknown', async () => {
-        const response = await request(app.callback()).get('/sg-master/unknown/assets/world-50m.json');
+    it('Redirect when branch is unknown', async () => {
+        const response = await request(app.callback()).get('/sg/unknown/assets/world-50m.json');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(sgMasterLatestCommit+"/assets/world-50m.json");
     });
-    it('Redirect when version is a known branch', async () => {
-        const response = await request(app.callback()).get('/sg-master/master/assets/world-50m.json');
+    it('Redirect when branch is a known branch', async () => {
+        const response = await request(app.callback()).get('/sg/master/assets/world-50m.json');
+        expect(response.status).to.equal(302);
+        expect(response.text).to.include('Redirecting to');
+        expect(response.text).to.include(sgMasterLatestCommit+"/assets/world-50m.json");
+    });
+    it('Redirect when commit is unknown', async () => {
+        const response = await request(app.callback()).get('/sg/master/unknowncommit/assets/world-50m.json');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(sgMasterLatestCommit+"/assets/world-50m.json");
     });
     it('Redirecting to target asset', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}/assets/world-50m.json`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}/assets/world-50m.json`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/open-numbers/ddf--gapminder--systema_globalis/master/assets/world-50m.json");
@@ -145,7 +157,7 @@ describe('API Routes: ASSETS', () => {
     it('Missing PNG asset', async () => {
         const response = await request(app.callback()).get("/open-numbers/ddf--gapminder--billionaires/stage/assets/missing_asset.png");
         expect(response.status).to.equal(404);
-        expect(response.text).to.include('Not Found');
+        expect(response.text).to.include('not found');
     });
 
 });
@@ -154,22 +166,22 @@ describe('API Routes: ASSETS', () => {
 
 describe('API Routes: DATA', () => {
     it('NO_QUERY_PROVIDED', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
     it('NO_QUERY_PROVIDED', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
     it('NO_QUERY_PROVIDED', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
     it('QUERY_PARSING_ERROR', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=key&=value;&value@;;&from=concepts.schema_`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_select_key@=key&=value;&value@;;&from=concepts.schema_`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Query failed to parse");
     });
@@ -183,83 +195,89 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(403);
         expect(response.text).to.include("Dataset not allowed");
     });
-    it('Redirect when version is not given', async () => {
-        const response = await request(app.callback()).get(`/sg-master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+    it('Redirect when branch is not given', async () => {
+        const response = await request(app.callback()).get(`/sg?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
-    it('Redirect when version is unknown', async () => {
-        const response = await request(app.callback()).get(`/sg-master/unknown?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+    it('Redirect when branch is unknown', async () => {
+        const response = await request(app.callback()).get(`/sg/unknown?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
-    it('Redirect when version is a known branch', async () => {
-        const response = await request(app.callback()).get(`/sg-master/master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+    it('Redirect when branch is a known branch', async () => {
+        const response = await request(app.callback()).get(`/sg/master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg-master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
+    });
+    it('Redirect when commit is unknown', async () => {
+        const response = await request(app.callback()).get(`/sg/master/unknowncommit?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        expect(response.status).to.equal(302);
+        expect(response.text).to.include('Redirecting to');
+        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Successful case - entities', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('world_4region');
         expect(response.body).to.have.property('rows').that.deep.include(['africa', 1, 'Africa', 2]);
     });
     it('Successful case - datapoints', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=internet/_users;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=usa&=chn&=rus&=nga`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=internet/_users;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=usa&=chn&=rus&=nga`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('internet_users');
         expect(response.body).to.have.property('rows').that.deep.include(["chn", 1998, 0.16854]);
     });
     it('Successful case - datapoints', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=gender&=time;&value@=literacy/_rate/_adult;;&from=datapoints&where_time=2011`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=gender&=time;&value@=literacy/_rate/_adult;;&from=datapoints&where_time=2011`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('literacy_rate_adult');
         expect(response.body).to.have.property('rows').that.deep.include(["arm", "0", 2011, 99.71]);
     });
     it('Successful case - datapoints large', async () => {
-        const response = await request(app.callback()).get(`/population/${popMasterLatestFullCommit}?_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`);
+        const response = await request(app.callback()).get(`/population/master/${popMasterLatestFullCommit}?_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
         expect(response.body).to.have.property('rows').that.deep.include(["chn", "25", "1", 2008, 10886686]);
     });
     it('Successful case - datapoints bomb query povcalnet', async () => {
-        const response = await request(app.callback()).get(`/povcalnet/${povcalnetMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=income/_mountain/_50bracket/_shape/_for/_log;;&from=datapoints&where_`);
+        const response = await request(app.callback()).get(`/povcalnet/master/${povcalnetMasterLatestCommit}?_language=en&select_key@=geo&=time;&value@=income/_mountain/_50bracket/_shape/_for/_log;;&from=datapoints&where_`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('income_mountain_50bracket_shape_for_log');
         expect(response.body).to.have.property('rows').that.is.an('array').that.is.empty;
     });
     it('Successful case - datapoints bomb query population', async () => {
-        const response = await request(app.callback()).get(`/population/${popMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_`);
+        const response = await request(app.callback()).get(`/population/master/${popMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
         expect(response.body).to.have.property('rows').that.is.an('array').that.is.empty;
     });
     it('DDFCSV ddf-query-validator error - invalid "from" clause', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=blablabla`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause must be one of the list: concepts, entities, datapoints,");
     });
     it('DDFCSV ddf-query-validator error - missing "from" clause', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause couldn't be empty");
     });
     it('DDFCSV ddf-query-validator error - wrong dataset requested', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_$and@_year=2022;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=world`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_$and@_year=2022;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=world`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Too many query definition errors");
     });
     it('Deliberate crash to create a 500 error', async () => {
-        const response = await request(app.callback()).get(`/sg-master/${sgMasterLatestCommit}?_test500error:true&select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
+        const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_test500error:true&select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(500);
         expect(response.text).to.include('Internal Server Error');
     });
