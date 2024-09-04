@@ -35,7 +35,9 @@ await loadEventsFromFile();
 initRoutes(api);
 
 app.use(compress());
-app.use(serve('datasets'));
+app.use(serve('datasets', {maxage: 14400*1000, setHeaders: (res, path, stats) => {
+  res.setHeader('Cache-Control', 'public, s-maxage=31536000, max-age=14400');
+}})) 
 app.use(api.routes());
 
 const server = app.listen(port);
