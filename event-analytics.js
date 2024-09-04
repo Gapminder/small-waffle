@@ -102,7 +102,7 @@ export async function backupEvents({filename = "backup", timestamp = false} = {}
   }
 }
 
-export async function loadEventsFromFile({filename = "backup"} = {}){
+export async function loadEventsFromFile({filename = "hourly"} = {}){
   if (process.env.EVENTFILENAME) filename = process.env.EVENTFILENAME;
   ensurePathExists();
   backupFileLock = true;
