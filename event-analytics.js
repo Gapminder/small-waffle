@@ -61,7 +61,7 @@ export function recordEvent(params = {}){
         return 1;
     } else {
         //compute a cumulative average in ms
-        if (record.timing) record.timing = ((record.timing * record.count) + params.timing) / (record.count + 1);
+        if (record.timing) record.timing = Math.round(((record.timing * record.count) + params.timing) / (record.count + 1));
         record.count = record.count + 1;
         record.latest_ms = now_ms;
         log(params, record.count);
@@ -85,20 +85,20 @@ async function ensurePathExists(){
   if (!existsSync(backupFilePath)) mkdirSync(backupFilePath, { recursive: true });
 }
 
-export async function backupEvents({filename = "backup", date = false} = {}) {
+export async function backupEvents({filename = "backup", timestamp = false} = {}) {
   ensurePathExists();
-  const dateFormat = () => new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const fileName = path.join(backupFilePath, `${filename}${date ? "_" + dateFormat() : ""}.json`);
+  const dateFormat = () => new Date().toISOString().slice(0,19).replaceAll(":","-"); // "YYYY-MM-DDThh-mm-ss"
+  const fileName = path.join(backupFilePath, `${filename}${timestamp ? "_" + dateFormat() : ""}.json`);
 
   if (backupFileLock) return;
   try {
     await fs.writeFile( fileName, JSON.stringify([...requestMap.entries()]) );
-    const status = `Event backup with ${requestMap.size} events saved successfully to ${fileName}`;
+    const status = `Event backup with ${requestMap.size} events saved successfully to ${fileName}.`;
     Log.info(status);
     return ({status})
   } catch (error) {
-    Log.error('Failed to save hourly backup:', error);
-    return ({status: `Failed to save hourly backup`})
+    Log.error('Failed to save event backup:', error);
+    return ({status: `Failed to save event backup`})
   }
 }
 
@@ -117,6 +117,21 @@ export async function loadEventsFromFile({filename = "backup"} = {}){
     backupFileLock = false;
     Log.error(`Failed to load event backup from ${fileName}`, error);
   }
+}
+
+export async function resetEvents() {
+  const backupStatus = await backupEvents({filename: "before-reset", timestamp: true});
+  let status = "";
+  if (backupStatus.status.includes("success")) {
+    requestMap = new Map();
+    //erase the hourly backup as well
+    await backupEvents({filename: "backup", timestamp: false});
+    status = `Successfully purged all events and erased the hourly backup file`;
+  } else {
+    status = `Failed to purge all events`;
+  }
+  Log.info(status);
+  return({status});
 }
 
 // Every hour at minute 0
