@@ -125,7 +125,7 @@ export async function resetEvents() {
   if (backupStatus.status.includes("success")) {
     requestMap = new Map();
     //erase the hourly backup as well
-    await backupEvents({filename: "backup", timestamp: false});
+    await backupEvents({filename: "hourly", timestamp: false});
     status = `Successfully purged all events and erased the hourly backup file`;
   } else {
     status = `Failed to purge all events`;
