@@ -263,7 +263,7 @@ export default function initRoutes(api) {
 
           //ACTUAL READER WORK IS HERE
           const data = await readerInstance.read(ddfQuery);
-          data.version = commit;
+          //data.version = commit;
 
           const timeEnd = new Date().valueOf();
           const timing = timeEnd - timeStart;
