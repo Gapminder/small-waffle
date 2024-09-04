@@ -10,7 +10,7 @@ import {
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
-import { recordEvent, retrieveEvents, backupEvents } from "./event-analytics.js";
+import { recordEvent, retrieveEvents, retrieveEvent, backupEvents } from "./event-analytics.js";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
@@ -235,7 +235,7 @@ export default function initRoutes(api) {
             throw "Deliberate 500 error";
 
           if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "population" || datasetSlug == "povcalnet") ) {
-            recordEvent({...eventTemplate, status: 0, comment: "Bomb query, empty response", branch, commit});
+            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit});
             return success({
               header: ddfQuery.select.key.concat(ddfQuery.select.value),
               rows: [],
@@ -244,14 +244,17 @@ export default function initRoutes(api) {
             })
           }
 
-          const eventCount = recordEvent({...eventTemplate, comment: "Query to reader", branch, commit});
-          const queryLogText = `200 --- Resolved --- ${datasetSlug}/${branch}/${commit}?${queryString}`;
-          if(eventCount === 1) Log.time(queryLogText);
-          
+          const event = retrieveEvent(eventTemplate);
+          if (!event) Log.info(`New query to reader --- ${datasetSlug}/${commit}?${queryString}`);
+          const timeStart = new Date().valueOf();
+
           //ACTUAL READER WORK IS HERE
           const data = await readerInstance.read(ddfQuery);
 
-          if(eventCount === 1) Log.timeEnd(queryLogText);
+          const timeEnd = new Date().valueOf();
+          const timing = timeEnd - timeStart;
+          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing});
+
           return success(data);
         } catch (err) {
           return error(err);

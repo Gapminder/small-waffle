@@ -17,13 +17,17 @@ function key({type="", asset="", datasetSlug="", branchOrCommit="", queryString=
     return createMD5Hash(`${type} ${asset} ${datasetSlug} ${branchOrCommit} ${queryString} ${referer}`);
 }
 
-function logstring({status, type, asset, datasetSlug, branchOrCommit, queryString, referer, comment}){
+function logstring({status, type, asset, datasetSlug, branchOrCommit, queryString, referer, comment, timing}){
     const branch = branchOrCommit? "/"+branchOrCommit : "";
     const query = queryString? "?"+queryString : "";
     const statusText = status? status + " --- " : "";
     return type === "asset" 
         ? `${statusText}${comment} --- ${datasetSlug}${branch}/assets/${asset} --- ref: ${referer} `
-        : `${statusText}${comment} --- ${datasetSlug}${branch}${query} --- ref: ${referer}`;
+        : `${statusText}${comment}${timingText(timing)} --- ${datasetSlug}${branch}${query} --- ref: ${referer}`;
+}
+
+function timingText(timing){
+  return timing? " in " + Math.round(timing) + "ms" : "";
 }
 
 function getLogLevel(status, newEvent){
@@ -36,7 +40,7 @@ function getLogLevel(status, newEvent){
 function log(params, count){
     const text = count === 0 
         ? `NEW EVENT: ${logstring(params)}` 
-        : `FAMILIAR EVENT (${count}): ${params.status} --- ${params.comment}`;
+        : `FAMILIAR EVENT (${count}): ${params.status} --- ${params.comment}${timingText(params.timing)}`;
     const logger = Log[getLogLevel(params.status, count === 0)];
     if (params.stack) 
         logger(text, params.stack);
@@ -56,6 +60,8 @@ export function recordEvent(params = {}){
         log(params, 0);
         return 1;
     } else {
+        //compute a cumulative average in ms
+        if (record.timing) record.timing = ((record.timing * record.count) + params.timing) / (record.count + 1);
         record.count = record.count + 1;
         record.latest_ms = now_ms;
         log(params, record.count);
@@ -63,8 +69,12 @@ export function recordEvent(params = {}){
     }
 }
 
-export function retrieveEvents(params){
-    return requestMap.get(key(params)) || [...requestMap.entries()];
+export function retrieveEvents(){
+    return [...requestMap.entries()];
+}
+
+export function retrieveEvent(params){
+  return requestMap.get(key(params));
 }
 
 
