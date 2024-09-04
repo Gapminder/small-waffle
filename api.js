@@ -129,7 +129,7 @@ export default function initRoutes(api) {
     
     Log.debug(`Received an info request for ${datasetSlug}/${branchOrCommit}`);
 
-    const {status, error, redirect, success} = await redirectLogic({
+    const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
       queryString: ctx.queryString, 
       type: "info",
@@ -153,6 +153,7 @@ export default function initRoutes(api) {
     });
 
     ctx.status = status;
+    ctx.set('Cache-Control', cacheControl);
     if (error) ctx.throw(status, error);
     if (redirect) ctx.redirect(redirect);
     if (success) ctx.body = success;
@@ -169,7 +170,7 @@ export default function initRoutes(api) {
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "asset", asset, datasetSlug, branchOrCommit, referer};
 
-    const {status, error, redirect, success} = await redirectLogic({
+    const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
       queryString: ctx.queryString, 
       type: "asset",
@@ -185,14 +186,16 @@ export default function initRoutes(api) {
         const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
 
         const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
+        const cacheControl = "public, s-maxage=31536000, max-age=14400";
 
         recordEvent({...eventTemplate, status: 302, comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit});
 
-        return redirect(assetPath);
+        return redirect(assetPath, cacheControl);
       }
     });
 
     ctx.status = status;
+    ctx.set('Cache-Control', cacheControl);
     if (error) ctx.throw(status, error);
     if (redirect) ctx.redirect(redirect);
     if (success) ctx.body = success;
@@ -210,7 +213,7 @@ export default function initRoutes(api) {
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "query", datasetSlug, branchOrCommit, queryString, referer};
 
-    const {status, error, redirect, success} = await redirectLogic({
+    const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
       queryString: queryString, 
       type: "query",
@@ -275,13 +278,10 @@ export default function initRoutes(api) {
 
 
     ctx.status = status;
+    ctx.set('Cache-Control', cacheControl);
     if (error) ctx.throw(status, error);
     if (redirect) ctx.redirect(redirect);
-    if (success) ctx.body = success;
-    
-  
-    
-  
+    if (success) ctx.body = success;  
   });
 
 

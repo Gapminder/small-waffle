@@ -13,34 +13,34 @@ export default async function redirectLogic({params, queryString, type, referer=
     
     const knownErrors = errors(datasetSlug, branchOrCommit);
 
-    function error(err){
+    function error(err, cacheControl = "no-store, max-age=0"){
       const knownError = knownErrors[err];
 
       if (!err.stack && knownError && knownError.length === 3) {
         // known error
         const [status, shortMessage, messageExtra] = knownError;
         recordEvent({...eventTemplate, status, comment: shortMessage});
-        return {status, error: `${shortMessage} ${messageExtra}`};
+        return {status, error: `${shortMessage} ${messageExtra}`, cacheControl};
 
       } else if (typeof err === "string" 
         && (err.includes("Too many query structure errors") || err.includes("Too many query definition errors"))) {        
         // hardcoded known error from ddf-query-validator inside DDFCSV reader
         recordEvent({...eventTemplate, status: 400, comment: err});
-        return {status: 400, error: `${err}`};
+        return {status: 400, error: `${err}`, cacheControl};
 
       } else {
         // unknown error
         recordEvent({...eventTemplate, status: 500, comment: err.message ? err.message : err, stack:err.stack});
-        return {status: 500, error: err.message ? err.message : err};
+        return {status: 500, error: err.message ? err.message : err, cacheControl};
       }
     }
   
-    function redirect(target) {
-      return {status: 302, redirect: `${target}?${queryString}`};
+    function redirect(target, cacheControl = "public, s-maxage=300, max-age=300") {
+      return {status: 302, redirect: `${target}${queryString?"?"+queryString:""}`, cacheControl};
     }
   
-    function success(data){
-      return {status: 200, success: data};
+    function success(data, cacheControl = "public, s-maxage=31536000, max-age=14400"){
+      return {status: 200, success: data, cacheControl};
     }
     
     if(!datasetSlug) 
