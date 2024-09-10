@@ -48,7 +48,7 @@ describe('API Routes: SYNC', () => {
     it('Sync one dataset country-flags', async () => {
         const response = await request(app.callback()).get("/sync/country-flags");
         expect(response.status).to.equal(200);
-        expect(response.body).to.have.property('status', 'Sync successful for country-flags');
+        expect(response.body).to.have.property('ongoing');
     });
 });
 

@@ -32,6 +32,7 @@ export const datasetVersionReaderInstances = {
 }
 
 export const datasetBranchCommitMapping = {}
+export const syncStatus = {ongoing: false, events: []};
 
 export function getBranchFromCommit(datasetSlug, commit) {
   const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
@@ -60,21 +61,56 @@ export function getDefaultBranch(datasetSlug){
 }
 
 
-export async function syncAllDatasets() {
+export function updateSyncStatus(comment, addnew) {
+  if (!addnew && syncStatus.events.length > 0)
+    syncStatus.events[syncStatus.events.length - 1] = {timestamp: new Date().valueOf(), comment};
+  else
+    syncStatus.events.push({timestamp: new Date().valueOf(), comment});
+  Log.info(comment);
+}
+
+export function syncDatasetsIfNotAlreadySyncing(datasetSlug) {
+  if (syncStatus.ongoing) return syncStatus;
+
+  syncStatus.ongoing = true;
+  syncStatus.events = [];
+  
+  const syncFunction = datasetSlug ? syncDataset : syncAllDatasets;
+  syncFunction(datasetSlug).finally(() => {
+    syncStatus.ongoing = false;
+  });
+
+  return syncStatus;
+}
+
+async function syncAllDatasets(){
+  updateSyncStatus("👉 Received a request to sync ALL datasets", true);
   await updateAllowedDatasets();
   const datasetListString = allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : "";
-  Log.info(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
-
+  updateSyncStatus(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
+    
   cleanupAllDirectories(rootPath, allowedDatasets);
-
   for (const dataset of allowedDatasets)
     await syncDataset(dataset.slug);
 
-  Log.info(`
-  🟢 Sync complete!
-  `);
+  updateSyncStatus(`🟢 Sync complete for ${allowedDatasets.length} datasets: ${datasetListString}`);
+}
 
-  return `🟢 Sync complete for ${allowedDatasets.length} datasets: ${datasetListString}`;
+async function syncDataset(datasetSlug){
+  try {
+    updateSyncStatus(`👉 Syncing dataset with slug ${datasetSlug}`);
+    const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
+    if (!dataset) throw(`dataset not allowed`);
+    const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, dataset.branches);
+    datasetBranchCommitMapping[dataset.slug] = branchCommitMapping;
+    await updateFilesOnDisk(rootPath, dataset.id, branchCommitMapping, updateSyncStatus);
+    updateSyncStatus('Files on disk updated successfully.');
+    await loadReaderInstances(dataset, branchCommitMapping);
+    updateSyncStatus(`🟢 Sync successful for dataset ${datasetSlug}`);
+    return "Success";
+  } catch (err) {
+    updateSyncStatus(`🔴 Error syncing dataset ${datasetSlug}: ${err}`);
+  }
 }
 
 
@@ -91,32 +127,6 @@ export async function loadAllDatasets() {
   `);
 
   return `🟢 Load complete for ${allowedDatasets.length} datasets: ${datasetListString}`;
-}
-
-
-export async function syncDataset(datasetSlug) {
-  Log.info(`
-  === Syncing dataset with slug ${datasetSlug} ===
-  `);
-
-  const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
-  
-  if (!dataset) throw new Error(`Syncing error: Dataset not allowed: ${datasetSlug}`);
-
-  const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, dataset.branches);
-
-  datasetBranchCommitMapping[dataset.slug] = branchCommitMapping;
-
-  try {
-    await updateFilesOnDisk(rootPath, dataset.id, branchCommitMapping)
-    Log.info('Files on disk updated successfully.');
-  } catch (err) {
-    Log.error('Error updating files on disk:', err);
-  }
-  await loadReaderInstances(dataset, branchCommitMapping)
-
-  Log.info(`Sync successful for dataset ${datasetSlug}`);
-  return(`Sync successful for ${datasetSlug}`);
 }
 
 export async function loadDataset(datasetSlug) {

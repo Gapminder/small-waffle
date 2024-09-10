@@ -6,11 +6,11 @@ import Log from "./logger.js"
 
 const repoUrlTemplate = (datasetId) => `https://github.com/${datasetId}`
 
-export async function updateFilesOnDisk(rootPath, datasetId, branchCommitMapping) {
+export async function updateFilesOnDisk(rootPath, datasetId, branchCommitMapping, updateSyncStatus) {
 
   for (const [branchName, latestCommit] of Object.entries(branchCommitMapping)) {
     await ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branchName);
-    await ensureLatestCommit(rootPath, datasetId, branchName, latestCommit);
+    await ensureLatestCommit(rootPath, datasetId, branchName, latestCommit, updateSyncStatus);
   }
 }
 
@@ -82,20 +82,23 @@ export async function ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branc
   }
 }
 
-async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit) {
-  Log.info(`Checking if the branch ${branchName} is referencing the latest commit`);
+async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit, updateSyncStatus) {
+  updateSyncStatus(`Checking if the branch ${branchName} is referencing the latest commit`);
 
   const branchPath = path.join(rootPath, datasetId, branchName);
   const currentCommit = await git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null);
 
   if (currentCommit !== latestCommit) {
-    Log.info(`Fetching the latest updates for branch ${branchName}`);
-    await git.fetch({ fs, http, dir: branchPath, ref: branchName });
+    updateSyncStatus(`Fetching the latest updates for ${datasetId}/${branchName}`);
+    await git.fetch({ fs, http, dir: branchPath, ref: branchName, onProgress: (progress) => {
+        // This function is called periodically with progress updates
+        updateSyncStatus(`fetch progress: ${progress.phase} ${progress.loaded} / ${progress.total}`);
+      } });
 
-    Log.info(`Checking out the latest commit for branch ${branchName}`);
+    updateSyncStatus(`Checking out the latest commit for branch ${branchName}`);
     await git.checkout({ fs, dir: branchPath, ref: latestCommit, force: true });
   } else {
-    Log.info("The checked out files are the ones from the latest commit");
+    updateSyncStatus("The checked out files are the ones from the latest commit");
   }
 }
 

@@ -3,9 +3,8 @@ import * as path from 'path';
 import {
   datasetBranchCommitMapping,
   datasetVersionReaderInstances,
-  syncAllDatasets,
-  getBranchFromCommit,
-  syncDataset,
+  syncStatus,
+  syncDatasetsIfNotAlreadySyncing,
   getAllowedDatasetEntryFromSlug
 } from "./datasetManagement.js";
 
@@ -104,18 +103,18 @@ export default function initRoutes(api) {
   */
   api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
 
-    let datasetSlug = ctx.params.datasetSlug;
-    let result = "";
-    if(!datasetSlug){
-      Log.info("Received a request to sync ALL datasets");
-      result = await syncAllDatasets();
-    } else {
-      Log.info("Received a request to sync dataset: " + datasetSlug);
-      result = await syncDataset(datasetSlug);
-    }
+    const datasetSlug = ctx.params.datasetSlug;
+    const result = syncDatasetsIfNotAlreadySyncing(datasetSlug);
     ctx.status = 200; 
-    ctx.body = {status: result};
-  
+    ctx.body = result;
+  });
+
+  /*
+  * Check sync progress
+  */
+  api.get("/syncprogress", async (ctx, next) => {
+    ctx.status = 200; 
+    ctx.body = syncStatus;
   });
 
   /*
