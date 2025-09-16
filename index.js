@@ -5,13 +5,13 @@ import jwt from "koa-jwt";
 import cors from '@koa/cors';
 import dotenv from 'dotenv';
 import compress from "koa-compress";
+import { getHeapStatistics } from 'v8';
 import {
   loadAllDatasets,
-} from "./datasetManagement.js";
-import {loadEventsFromFile} from "./event-analytics.js";
-import initRoutes from "./api.js";
-import { getHeapStatistics } from 'v8';
-import Log from "./logger.js";
+} from "./src/datasetManagement.js";
+import {loadEventsFromFile} from "./src/event-analytics.js";
+import initRoutes from "./src/api.js";
+import Log from "./src/logger.js";
 
 
 Log.time("spinup time");
