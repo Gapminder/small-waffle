@@ -85,7 +85,7 @@ export function syncDatasetsIfNotAlreadySyncing(datasetSlug) {
 }
 
 async function syncAllDatasets(){
-  updateSyncStatus("👉 Received a request to sync ALL datasets", true);
+  updateSyncStatus("👉 Received a request to sync ALL datasets \n", true);
   await updateAllowedDatasets();
   await updateAccessControlList();
 
@@ -96,12 +96,12 @@ async function syncAllDatasets(){
   for (const dataset of allowedDatasets)
     await syncDataset(dataset.slug);
 
-  updateSyncStatus(`🟢 Sync complete for ${allowedDatasets.length} datasets: ${datasetListString}`);
+  updateSyncStatus(`🟢 Sync complete for ${allowedDatasets.length} datasets: ${datasetListString} \n`);
 }
 
 async function syncDataset(datasetSlug){
   try {
-    updateSyncStatus(`👉 Syncing dataset with slug ${datasetSlug}`);
+    updateSyncStatus(`👉 Syncing dataset with slug ${datasetSlug} \n`);
     const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
     if (!dataset) throw(`dataset not allowed`);
     const branchCommitMapping = await getRepoBranchCommitMapping(dataset.githubRepoId, dataset.branches);
@@ -109,10 +109,10 @@ async function syncDataset(datasetSlug){
     await updateFilesOnDisk(rootPath, dataset.githubRepoId, branchCommitMapping, updateSyncStatus);
     updateSyncStatus('Files on disk updated successfully.');
     await loadReaderInstances(dataset, branchCommitMapping);
-    updateSyncStatus(`🟢 Sync successful for dataset ${datasetSlug}`);
+    updateSyncStatus(`🟢 Sync successful for dataset ${datasetSlug} \n`);
     return "Success";
   } catch (err) {
-    updateSyncStatus(`🔴 Error syncing dataset ${datasetSlug}: ${err}`);
+    updateSyncStatus(`🔴 Error syncing dataset ${datasetSlug}: ${err} \n`);
   }
 }
 
