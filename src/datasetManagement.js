@@ -104,9 +104,9 @@ async function syncDataset(datasetSlug){
     updateSyncStatus(`👉 Syncing dataset with slug ${datasetSlug}`);
     const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
     if (!dataset) throw(`dataset not allowed`);
-    const branchCommitMapping = await getRepoBranchCommitMapping(dataset.id, dataset.branches);
+    const branchCommitMapping = await getRepoBranchCommitMapping(dataset.githubRepoId, dataset.branches);
     datasetBranchCommitMapping[dataset.slug] = branchCommitMapping;
-    await updateFilesOnDisk(rootPath, dataset.id, branchCommitMapping, updateSyncStatus);
+    await updateFilesOnDisk(rootPath, dataset.githubRepoId, branchCommitMapping, updateSyncStatus);
     updateSyncStatus('Files on disk updated successfully.');
     await loadReaderInstances(dataset, branchCommitMapping);
     updateSyncStatus(`🟢 Sync successful for dataset ${datasetSlug}`);
@@ -144,14 +144,14 @@ export async function loadDataset(datasetSlug) {
   
   if (!dataset) throw new Error(`Syncing error: Dataset not allowed: ${datasetSlug}`);
 
-  const branchCommitMapping = await getLocalBranchCommitMapping(rootPath, dataset.id, dataset.branches);
+  const branchCommitMapping = await getLocalBranchCommitMapping(rootPath, dataset.githubRepoId, dataset.branches);
 
   Log.info(branchCommitMapping)
 
   datasetBranchCommitMapping[dataset.slug] = branchCommitMapping;
 
   try {
-    await checkFilesOnDisk(rootPath, dataset.id, branchCommitMapping)
+    await checkFilesOnDisk(rootPath, dataset.githubRepoId, branchCommitMapping)
     Log.info('Files on disk checked successfully.');
   } catch (err) {
     Log.error('Error checking files on disk:', err);
@@ -166,7 +166,7 @@ async function loadReaderInstances(dataset, branchCommitMapping) {
   datasetVersionReaderInstances[dataset.slug] = {}
 
   for (const [branchName, latestCommit] of Object.entries(branchCommitMapping)) {
-    const branchPath = path.join(rootPath, dataset.id, branchName);
+    const branchPath = path.join(rootPath, dataset.githubRepoId, branchName);
     const readerInstance = new DDFCsvReader.getDDFCsvReaderObject();
     readerInstance.init({
       path: branchPath,

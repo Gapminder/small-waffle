@@ -2,21 +2,22 @@ import fs from 'fs';
 import path from 'path';
 import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node';  // let exports map pick node/index.js
-import Log from "./logger.js"
+import Log from "./logger.js";
+import getGithubAccessToken from "./githubAppConnection.js";
 
-const repoUrlTemplate = (datasetId) => `https://github.com/${datasetId}`
+const repoUrlTemplate = (githubRepoId) => `https://github.com/${githubRepoId}`
 
-export async function updateFilesOnDisk(rootPath, datasetId, branchCommitMapping, updateSyncStatus) {
+export async function updateFilesOnDisk(rootPath, githubRepoId, branchCommitMapping, updateSyncStatus) {
 
   for (const [branchName, latestCommit] of Object.entries(branchCommitMapping)) {
-    await ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branchName);
-    await ensureLatestCommit(rootPath, datasetId, branchName, latestCommit, updateSyncStatus);
+    await ensurePathExistsAndRepoIsCloned(rootPath, githubRepoId, branchName);
+    await ensureLatestCommit(rootPath, githubRepoId, branchName, latestCommit, updateSyncStatus);
   }
 }
 
-export async function checkFilesOnDisk(rootPath, datasetId, branchCommitMapping) {
+export async function checkFilesOnDisk(rootPath, githubRepoId, branchCommitMapping) {
   for (const branchName of Object.keys(branchCommitMapping)) {
-    await ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branchName);
+    await ensurePathExistsAndRepoIsCloned(rootPath, githubRepoId, branchName);
   }
 }
 
@@ -29,20 +30,20 @@ export function cleanupAllDirectories(rootPath, allowedDatasets) {
 
   const datasetsWithOwners = allowedDatasets.map(m => ({
     ...m, 
-    owner: m.id.split("/")[0],
-    dataset: m.id.split("/")[1]
+    owner: m.githubRepoId.split("/")[0],
+    name: m.githubRepoId.split("/")[1]
   }));
 
   const ownerFoldersToKeep = new Set(datasetsWithOwners.map(m => m.owner));
   const datasetFoldersToKeep = datasetsWithOwners.reduce((acc, d) => { 
     if (!acc[d.owner]) acc[d.owner] = new Set();
-    acc[d.owner].add(d.dataset);
+    acc[d.owner].add(d.name);
     return acc;
   }, {})
 
   const branchFoldersToKeep = datasetsWithOwners.reduce((acc, d) => { 
-    if (!acc[d.id]) acc[d.id] = new Set();
-    d.branches.forEach(branch => acc[d.id].add(branch));
+    if (!acc[d.githubRepoId]) acc[d.githubRepoId] = new Set();
+    d.branches.forEach(branch => acc[d.githubRepoId].add(branch));
     return acc;
   }, {})
 
@@ -71,25 +72,25 @@ export function cleanupAllDirectories(rootPath, allowedDatasets) {
   }
 }
 
-export async function ensurePathExistsAndRepoIsCloned(rootPath, datasetId, branchName) {
+export async function ensurePathExistsAndRepoIsCloned(rootPath, githubRepoId, branchName) {
   Log.info(`Ensuring the directory for branch ${branchName} exists`);
   
-  const branchPath = path.join(rootPath, datasetId, branchName);
+  const branchPath = path.join(rootPath, githubRepoId, branchName);
   if (!fs.existsSync(branchPath) || !fs.readdirSync(branchPath).includes("datapackage.json")) {
     fs.mkdirSync(branchPath, { recursive: true });
     Log.info(`Cloning the repository for branch ${branchName}`);
-    await git.clone({ fs, http, dir: branchPath, url: repoUrlTemplate(datasetId), ref: branchName, singleBranch: true, depth: 1 });
+    await git.clone({ fs, http, dir: branchPath, url: repoUrlTemplate(githubRepoId), ref: branchName, singleBranch: true, depth: 1 });
   }
 }
 
-async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit, updateSyncStatus) {
+async function ensureLatestCommit(rootPath, githubRepoId, branchName, latestCommit, updateSyncStatus) {
   updateSyncStatus(`Checking if the branch ${branchName} is referencing the latest commit`);
 
-  const branchPath = path.join(rootPath, datasetId, branchName);
+  const branchPath = path.join(rootPath, githubRepoId, branchName);
   const currentCommit = await git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null);
 
   if (currentCommit !== latestCommit) {
-    updateSyncStatus(`Fetching the latest updates for ${datasetId}/${branchName}`);
+    updateSyncStatus(`Fetching the latest updates for ${githubRepoId}/${branchName}`);
     await git.fetch({ fs, http, dir: branchPath, ref: branchName, onProgress: (progress) => {
         // This function is called periodically with progress updates
         updateSyncStatus(`fetch progress: ${progress.phase} ${progress.loaded} / ${progress.total}`);
@@ -104,9 +105,9 @@ async function ensureLatestCommit(rootPath, datasetId, branchName, latestCommit,
 
 
 
-export async function getLocalBranchCommitMapping(rootPath, datasetId, branches) {
+export async function getLocalBranchCommitMapping(rootPath, githubRepoId, branches) {
   const promises = branches.map(branch => {
-    const branchPath = path.join(rootPath, datasetId, branch);
+    const branchPath = path.join(rootPath, githubRepoId, branch);
     return git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null).then(commit => [branch, commit]);
   });
   const array = await Promise.all(promises);

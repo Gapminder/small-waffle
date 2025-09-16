@@ -33,7 +33,7 @@ describe('API Routes: STATUS', () => {
     it('Status has country-flags as one of the allowedDatasets', async () => {
         expect(status.allowedDatasets).to.deep.include({
             slug: "country-flags",
-            id: "open-numbers/ddf--gapminder--country_flag_svg",
+            githubRepoId: "open-numbers/ddf--gapminder--country_flag_svg",
             branches: ["master"],
             default_branch: ""
         });

@@ -188,7 +188,7 @@ export default function initRoutes(api) {
       callback: async ({redirect})=>{
         const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
 
-        const assetPath = path.join("/" + dataset.id, branch, 'assets', asset);
+        const assetPath = path.join("/" + dataset.githubRepoId, branch, 'assets', asset);
         const cacheControl = "public, s-maxage=31536000, max-age=14400";
 
         recordEvent({...eventTemplate, status: 302, comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit});

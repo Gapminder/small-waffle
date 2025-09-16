@@ -4,8 +4,8 @@ import Log from "./logger.js"
 
 export let allowedDatasets = [];
 // looks like this = [
-//   {slug: "fasttrack", id: "open-numbers/ddf--gapminder--fasttrack"},
-//   {slug: "billy-master", id: "open-numbers/ddf--gapminder--billionaires"},
+//   {slug: "fasttrack", githubRepoId: "open-numbers/ddf--gapminder--fasttrack"},
+//   {slug: "billy-master", githubRepoId: "open-numbers/ddf--gapminder--billionaires"},
 // ]
 
 export async function updateAllowedDatasets() {
@@ -40,8 +40,13 @@ async function updateAllowedDatasetsFromGoogleSpreadsheet() {
     response.body
       .pipe(csv())
       .on('data', (row) => {
-        row.branches = row.branches.split(",").map(m => m.trim());
-        allowedDatasets.push(row);
+        allowedDatasets.push({
+          slug: row.id,
+          githubRepoId: row.github_repo_id,
+          branches: row.branches.split(",").map(s => s.trim()),
+          default_branch: row.default_branch,
+          is_private: row.is_private.trim() === "FALSE" ? false : (row.is_private.trim() === "TRUE" || null)
+        });
       })
       .on('end', () => resolve(allowedDatasets))
       .on('error', (err) => reject(err));
@@ -67,12 +72,12 @@ async function updateAllowedDatasetsFromSupabaseDb() {
 
   const rows = await response.json();
 
-  allowedDatasets = rows.map(m => ({
-    slug: m.id,
-    id: m.github_repo_id,
-    branches: m.branches.split(",").map(s => s.trim()),
-    default_branch: m.default_branch,
-    is_private: m.is_private
+  allowedDatasets = rows.map(row => ({
+    slug: row.id,
+    githubRepoId: row.github_repo_id,
+    branches: row.branches.split(",").map(s => s.trim()),
+    default_branch: row.default_branch,
+    is_private: row.is_private
   }));
 
 

@@ -1,9 +1,9 @@
 import fetch from 'node-fetch';
 
 
-async function fetchLatestCommit(datasetId, branch) {
+async function fetchLatestCommit(githubRepoId, branch) {
   const token = process.env.GITHUB_TOKEN;
-  const url = `https://api.github.com/repos/${datasetId}/commits/${branch}`;
+  const url = `https://api.github.com/repos/${githubRepoId}/commits/${branch}`;
   const headers = token ? { Authorization: `token ${token}` } : {};
 
   const response = await fetch(url, { headers });
@@ -15,8 +15,8 @@ async function fetchLatestCommit(datasetId, branch) {
   return [branch, commitData.sha];
 }
 
-export async function getRepoBranchCommitMapping(datasetId, branches) {
-  const promises = branches.map(branch => fetchLatestCommit(datasetId, branch));
+export async function getRepoBranchCommitMapping(githubRepoId, branches) {
+  const promises = branches.map(branch => fetchLatestCommit(githubRepoId, branch));
   const array = await Promise.all(promises);
   return Object.fromEntries(array);
 }
