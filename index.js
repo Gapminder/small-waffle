@@ -43,7 +43,7 @@ if(process.env.SUPABASE_JWT_SECRET) app.use(jwt({
 }));
 
 app.use(cors({
-  origin: 'http://localhost:4200', // or a function that returns ctx.request.header.origin
+  origin: ctx => ctx.get("Origin") || "*", //super permissive policy
   credentials: true,               // if you use cookies/auth headers
   allowMethods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowHeaders: ['Content-Type','Authorization'],
