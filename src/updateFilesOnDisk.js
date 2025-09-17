@@ -3,12 +3,11 @@ import path from 'path';
 import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node';  // let exports map pick node/index.js
 import Log from "./logger.js";
-import getGithubAccessToken from "./githubAppConnection.js";
+import {getGithubAuthHandler} from "./githubAppConnection.js";
 
 const repoUrlTemplate = (githubRepoId) => `https://github.com/${githubRepoId}`
 
 export async function updateFilesOnDisk(rootPath, githubRepoId, branchCommitMapping, updateSyncStatus) {
-
   for (const [branchName, latestCommit] of Object.entries(branchCommitMapping)) {
     await ensurePathExistsAndRepoIsCloned(rootPath, githubRepoId, branchName);
     await ensureLatestCommit(rootPath, githubRepoId, branchName, latestCommit, updateSyncStatus);
@@ -75,33 +74,58 @@ export function cleanupAllDirectories(rootPath, allowedDatasets) {
 export async function ensurePathExistsAndRepoIsCloned(rootPath, githubRepoId, branchName) {
   Log.info(`Ensuring the directory for branch ${branchName} exists`);
   
-  const branchPath = path.join(rootPath, githubRepoId, branchName);
-  if (!fs.existsSync(branchPath) || !fs.readdirSync(branchPath).includes("datapackage.json")) {
-    fs.mkdirSync(branchPath, { recursive: true });
-    Log.info(`Cloning the repository for branch ${branchName}`);
-    await git.clone({ fs, http, dir: branchPath, url: repoUrlTemplate(githubRepoId), ref: branchName, singleBranch: true, depth: 1 });
+  const dir = path.join(rootPath, githubRepoId, branchName);
+  const url = repoUrlTemplate(githubRepoId);
+  if (fs.existsSync(path.join(dir, 'datapackage.json'))) return;
+
+  fs.mkdirSync(dir, { recursive: true });
+  Log.info(`Cloning the repository into branch ${branchName}`);
+  const onAuth = getGithubAuthHandler(null); //can supply installation id for multiple github app installations in different orgs
+  try {
+    await git.clone({ fs, http, dir, url, ref: branchName, singleBranch: true, depth: 1, onAuth });
+  } catch (e) {
+    // Fallback to public if auth fails or not configured
+    if (String(e?.message || e).includes('authorization') || String(e?.status) === '401') {
+      await git.clone({ fs, http, dir, url, ref: branchName, singleBranch: true, depth: 1 });
+    } else {
+      throw e;
+    }
   }
 }
+
 
 async function ensureLatestCommit(rootPath, githubRepoId, branchName, latestCommit, updateSyncStatus) {
   updateSyncStatus(`Checking if the branch ${branchName} is referencing the latest commit`);
 
-  const branchPath = path.join(rootPath, githubRepoId, branchName);
-  const currentCommit = await git.resolveRef({ fs, dir: branchPath, ref: 'HEAD' }).catch(() => null);
+  const dir = path.join(rootPath, githubRepoId, branchName);
+  const onAuth = getGithubAuthHandler(null); //can supply installation id for multiple github app installations in different orgs
+  const onProgress = (progress) => {
+    // This function is called periodically with progress updates
+    updateSyncStatus(`fetch progress: ${progress.phase} ${progress.loaded} / ${progress.total}`);
+  };
+
+  const currentCommit = await git.resolveRef({ fs, dir, ref: 'HEAD' }).catch(() => null);
 
   if (currentCommit !== latestCommit) {
     updateSyncStatus(`Fetching the latest updates for ${githubRepoId}/${branchName}`);
-    await git.fetch({ fs, http, dir: branchPath, ref: branchName, onProgress: (progress) => {
-        // This function is called periodically with progress updates
-        updateSyncStatus(`fetch progress: ${progress.phase} ${progress.loaded} / ${progress.total}`);
-      } });
+    try {
+      await git.fetch({ fs, http, dir, ref: branchName, onProgress, onAuth }); 
+    } catch (e) {
+      if (String(e?.message || e).includes('authorization') || String(e?.status) === '401') {
+        await git.fetch({ fs, http, dir, ref: branchName, onProgress });
+      } else {
+        throw e;
+      }
+    }
 
     updateSyncStatus(`Checking out the latest commit for branch ${branchName}`);
-    await git.checkout({ fs, dir: branchPath, ref: latestCommit, force: true });
+    await git.checkout({ fs, dir, ref: latestCommit, force: true });
   } else {
     updateSyncStatus("The checked out files are the ones from the latest commit");
   }
 }
+
+
 
 
 
