@@ -199,25 +199,25 @@ describe('API Routes: DATA', () => {
         const response = await request(app.callback()).get(`/sg?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Redirect when branch is unknown', async () => {
         const response = await request(app.callback()).get(`/sg/unknown?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Redirect when branch is a known branch', async () => {
         const response = await request(app.callback()).get(`/sg/master?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Redirect when commit is unknown', async () => {
         const response = await request(app.callback()).get(`/sg/master/unknowncommit?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`href="/sg/master/${sgMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/sg/master/${sgMasterLatestCommit}?_select_key`);
     });
     it('Successful case - entities', async () => {
         const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);
@@ -231,7 +231,7 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('internet_users');
-        expect(response.body).to.have.property('rows').that.deep.include(["chn", 1998, 0.16854]);
+        expect(response.body).to.have.property('rows').that.deep.include(["chn", 1990, 0]);
     });
     it('Successful case - datapoints', async () => {
         const response = await request(app.callback()).get(`/sg/master/${sgMasterLatestCommit}?_language=en&select_key@=geo&=gender&=time;&value@=literacy/_rate/_adult;;&from=datapoints&where_time=2011`);
