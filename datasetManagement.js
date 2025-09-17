@@ -9,6 +9,7 @@ import {
   cleanupAllDirectories
 } from "./updateFilesOnDisk.js";
 import { updateAllowedDatasets, allowedDatasets } from "./allowedDatasets.js";
+import { updateAccessControlList, accessControlListCache } from "./accessControl.js";
 import Log from "./logger.js"
 
 const rootPath = path.resolve("./datasets/");
@@ -86,6 +87,8 @@ export function syncDatasetsIfNotAlreadySyncing(datasetSlug) {
 async function syncAllDatasets(){
   updateSyncStatus("👉 Received a request to sync ALL datasets", true);
   await updateAllowedDatasets();
+  await updateAccessControlList();
+
   const datasetListString = allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : "";
   updateSyncStatus(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
     
@@ -116,6 +119,9 @@ async function syncDataset(datasetSlug){
 
 export async function loadAllDatasets() {
   await updateAllowedDatasets();
+  await updateAccessControlList();
+
+  console.log(allowedDatasets, accessControlListCache);
   const datasetListString = allowedDatasets.length > 0 ? allowedDatasets.map(m => m.slug).join(", ") : "";
   Log.info(`Got info about ${allowedDatasets.length} datasets: ${datasetListString}`);
 

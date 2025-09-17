@@ -14,6 +14,7 @@ import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
 import { allowedDatasets } from "./allowedDatasets.js";
+import { accessControlListCache } from "./accessControl.js";
 
 import Log from "./logger.js"
 
@@ -215,6 +216,15 @@ export default function initRoutes(api) {
     const queryString = ctx.querystring;
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
+
+    function checkAccess(){
+      return accessControlListCache.find(f => f.user_uuid === ctx.state.user.sub && f.dataset === datasetSlug);
+    }
+    const dataset_is_private = allowedDatasets.find(f => f.slug === datasetSlug).is_private;
+
+    if (dataset_is_private && (!ctx.state.user || !ctx.state.user.sub || !checkAccess()) ) {
+      ctx.throw(401, 'Unauthorized');
+    }
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
