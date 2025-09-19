@@ -30,8 +30,8 @@ describe('API Routes: STATUS', () => {
     it('Status has reader info', async () => {
         expect(status).to.have.nested.property('server.DDFCSVReaderVersionInfo.package.name', "@vizabi/reader-ddfcsv");
     });
-    it('Status has country-flags as one of the allowedDatasets', async () => {
-        expect(status.allowedDatasets).to.deep.include({
+    it('Status has country-flags as one of the datasetControlList', async () => {
+        expect(status.datasetControlList).to.deep.include({
             slug: "country-flags",
             githubRepoId: "open-numbers/ddf--gapminder--country_flag_svg",
             branches: ["master"],
@@ -58,10 +58,10 @@ describe('API Routes: INFO', () => {
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Received a request with no dataset provided");
     });
-    it('DATASET_NOT_ALLOWED', async () => {
+    it('DATASET_NOT_CONFIGURED', async () => {
         const response = await request(app.callback()).get('/info/webui');
         expect(response.status).to.equal(403);
-        expect(response.text).to.include("Dataset not allowed");
+        expect(response.text).to.include("Dataset not configured");
     });
     it('Redirect when branch is not given', async () => {
         const response = await request(app.callback()).get('/info/country-flags');
@@ -106,10 +106,10 @@ describe('API Routes: ASSETS', () => {
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Received a request with no dataset provided");
     });
-    it('DATASET_NOT_ALLOWED', async () => {
+    it('DATASET_NOT_CONFIGURED', async () => {
         const response = await request(app.callback()).get('/webui/assets/world-50m.json');
         expect(response.status).to.equal(403);
-        expect(response.text).to.include("Dataset not allowed");
+        expect(response.text).to.include("Dataset not configured");
     });
     it('Redirect when branch is not given', async () => {
         const response = await request(app.callback()).get('/sg/assets/world-50m.json');
@@ -190,10 +190,10 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Received a request with no dataset provided");
     });
-    it('DATASET_NOT_ALLOWED', async () => {
+    it('DATASET_NOT_CONFIGURED', async () => {
         const response = await request(app.callback()).get(`/webui?_select_key@=key&=value;&value@;;&from=concepts.schema`);
         expect(response.status).to.equal(403);
-        expect(response.text).to.include("Dataset not allowed");
+        expect(response.text).to.include("Dataset not configured");
     });
     it('Redirect when branch is not given', async () => {
         const response = await request(app.callback()).get(`/sg?_select_key@=world/_4region;&value@=name&=rank&=is--world/_4region;;&from=entities`);

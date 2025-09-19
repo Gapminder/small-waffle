@@ -27,7 +27,7 @@ if (dotenvResult.error) {
 
 const port = process.env.PORT || 3333;
 
-Log.info("Starting small-waffle on PORT " + port);
+Log.info(`🚀 Starting small-waffle on PORT ${port}`);
 
 const app = new Koa();
 const api = new Router(); // routes for the main API

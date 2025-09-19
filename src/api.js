@@ -5,7 +5,7 @@ import {
   datasetVersionReaderInstances,
   syncStatus,
   syncDatasetsIfNotAlreadySyncing,
-  getAllowedDatasetEntryFromSlug
+  getDatasetFromSlug
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
@@ -13,7 +13,7 @@ import { recordEvent, retrieveEvents, retrieveEvent, backupEvents, resetEvents }
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
-import { allowedDatasets } from "./allowedDatasets.js";
+import { datasetControlList } from "./datasetControl.js";
 import { accessControlListCache } from "./accessControl.js";
 
 import Log from "./logger.js"
@@ -83,7 +83,7 @@ export default function initRoutes(api) {
           DDFCSVReaderVersion: DDFCsvReader.version,
           DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo
         },
-        allowedDatasets,
+        datasetControlList,
         availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
       })
     } else {
@@ -102,10 +102,11 @@ export default function initRoutes(api) {
   /*
   * Sync the dataset metadata and files between disk, memory and GitHub
   */
-  api.get("/sync/:datasetSlug([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/sync/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
-    const result = syncDatasetsIfNotAlreadySyncing(datasetSlug);
+    const branch = ctx.params.branch;
+    const result = syncDatasetsIfNotAlreadySyncing(datasetSlug, branch);
     ctx.status = 200; 
     ctx.body = result;
   });
@@ -186,7 +187,7 @@ export default function initRoutes(api) {
         return !asset ? "ASSET_NOT_PROVIDED" : false;
       },
       callback: async ({redirect})=>{
-        const dataset = getAllowedDatasetEntryFromSlug(datasetSlug);
+        const dataset = getDatasetFromSlug(datasetSlug);
 
         const assetPath = path.join("/" + dataset.githubRepoId, branch, 'assets', asset);
         const cacheControl = "public, s-maxage=31536000, max-age=14400";
@@ -220,7 +221,7 @@ export default function initRoutes(api) {
     function checkAccess(){
       return accessControlListCache.find(f => f.user_uuid === ctx.state.user.sub && f.dataset === datasetSlug);
     }
-    const dataset_is_private = allowedDatasets.find(f => f.slug === datasetSlug).is_private;
+    const dataset_is_private = datasetControlList.find(f => f.slug === datasetSlug).is_private;
 
     if (dataset_is_private && (!ctx.state.user || !ctx.state.user.sub || !checkAccess()) ) {
       ctx.throw(401, 'Unauthorized');

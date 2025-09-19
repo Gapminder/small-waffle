@@ -1,6 +1,6 @@
 import {
     datasetBranchCommitMapping,
-    getAllowedDatasetEntryFromSlug,
+    getDatasetFromSlug,
     getDefaultCommit,
     getDefaultBranch
   } from "./datasetManagement.js";
@@ -47,8 +47,8 @@ export default async function redirectLogic({params, queryString, type, referer=
     if(!datasetSlug) 
       return error("NO_DATASET_GIVEN");
   
-    if(!getAllowedDatasetEntryFromSlug(datasetSlug)) 
-      return error("DATASET_NOT_ALLOWED");
+    if(!getDatasetFromSlug(datasetSlug)) 
+      return error("DATASET_NOT_CONFIGURED");
   
     const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
     if (!branchCommitMapping) 

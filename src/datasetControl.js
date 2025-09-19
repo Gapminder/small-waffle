@@ -2,30 +2,30 @@ import fetch from 'node-fetch';
 import csv from 'csv-parser';
 import Log from "./logger.js"
 
-export let allowedDatasets = [];
+export let datasetControlList = [];
 // looks like this = [
 //   {slug: "fasttrack", githubRepoId: "open-numbers/ddf--gapminder--fasttrack"},
 //   {slug: "billy-master", githubRepoId: "open-numbers/ddf--gapminder--billionaires"},
 // ]
 
-export async function updateAllowedDatasets() {
+export async function updateDatasetControlList() {
   if (
     process.env.GET_ALLOWED_DATASETS_FROM === "supabase_db"
     && process.env.SUPABASE_SERVICE_ROLE_KEY 
     && process.env.SUPABASE_ENDPOINT
   )
-    return updateAllowedDatasetsFromSupabaseDb();
+    return updateDatasetControlListFromSupabaseDb();
   else if (
     process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_ID
   )
-    return updateAllowedDatasetsFromGoogleSpreadsheet();
+    return updateDatasetControlListFromGoogleSpreadsheet();
   else {
     Log.error(".env file is not configured correctly");
   }
 }
 
 
-async function updateAllowedDatasetsFromGoogleSpreadsheet() {
+async function updateDatasetControlListFromGoogleSpreadsheet() {
   const spreadsheetId = process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_ID;
   const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
 
@@ -35,12 +35,12 @@ async function updateAllowedDatasetsFromGoogleSpreadsheet() {
   if (!response.ok)
     throw new Error(`Failed to fetch CSV: ${response.statusText}`);
 
-  allowedDatasets = [];
+  datasetControlList = [];
   return new Promise((resolve, reject) => {
     response.body
       .pipe(csv())
       .on('data', (row) => {
-        allowedDatasets.push({
+        datasetControlList.push({
           slug: row.id,
           githubRepoId: row.github_repo_id,
           branches: row.branches.split(",").map(s => s.trim()),
@@ -48,13 +48,13 @@ async function updateAllowedDatasetsFromGoogleSpreadsheet() {
           is_private: row.is_private.trim() === "FALSE" ? false : (row.is_private.trim() === "TRUE" || null)
         });
       })
-      .on('end', () => resolve(allowedDatasets))
+      .on('end', () => resolve(datasetControlList))
       .on('error', (err) => reject(err));
   });
 }
 
 
-async function updateAllowedDatasetsFromSupabaseDb() {
+async function updateDatasetControlListFromSupabaseDb() {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const endpoint = "https://" + process.env.SUPABASE_ENDPOINT;
 
@@ -72,7 +72,7 @@ async function updateAllowedDatasetsFromSupabaseDb() {
 
   const rows = await response.json();
 
-  allowedDatasets = rows.map(row => ({
+  datasetControlList = rows.map(row => ({
     slug: row.id,
     githubRepoId: row.github_repo_id,
     branches: row.branches.split(",").map(s => s.trim()),
@@ -81,7 +81,7 @@ async function updateAllowedDatasetsFromSupabaseDb() {
   }));
 
 
-  return Promise.resolve(allowedDatasets);
+  return Promise.resolve(datasetControlList);
 
 }
 

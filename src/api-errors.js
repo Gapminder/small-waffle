@@ -5,14 +5,14 @@ export default function errors(datasetSlug, branch, commit) {
       `Received a request with no dataset provided`, 
       `Please specify a dataset like https://small-waffle.gapminder.org/fasttrack`
     ],
-    DATASET_NOT_ALLOWED: [
+    DATASET_NOT_CONFIGURED: [
       403,
-      `Dataset not allowed: ${datasetSlug}`,
-      `Check if the dataset is correctly added into the control google spreadsheet`
+      `Dataset not configured: ${datasetSlug}`,
+      `Check if the dataset is correctly added into the control list on google spreadsheet or supabase`
     ],
     DATASET_NOT_FOUND: [
       404,
-      `Dataset allowed by config but not found: ${datasetSlug}`,
+      `Dataset present in config but not correctly synced: ${datasetSlug}`,
       `Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
     ],
     DEFAULT_COMMIT_NOT_RESOLVED: [
