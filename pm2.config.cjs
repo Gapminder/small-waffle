@@ -21,7 +21,7 @@ module.exports = {
       instances: 1, // keep 1 writer to avoid .git lock fights
       autorestart: true,
       watch: false, // change to true if you want live reload in dev
-      max_memory_restart: "400M",
+      max_memory_restart: "1500M",
       env: {
         SIDECAR_PORT: 3334
       },
