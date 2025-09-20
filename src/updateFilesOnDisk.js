@@ -88,7 +88,7 @@ export async function ensureLatestCommit(rootPath, dataset, branch, latestCommit
   const currentCommit = await getCurrentCommit(rootPath, dataset, branch);
   if (currentCommit !== latestCommit) {
     try {
-      await runInSidecarProcess({ action: "fetch", slug, dir, branch, updateSyncStatus, waffleFetcherAppInstallationId }); 
+      await runInSidecarProcess({ action: "fetch", slug, dir, branch, updateSyncStatus, waffleFetcherAppInstallationId, latestCommit }); 
     } catch (e) {
       throw e;
     }
@@ -103,29 +103,30 @@ export async function getCurrentCommit(rootPath, dataset, branch) {
 }
 
 
-async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncStatus, waffleFetcherAppInstallationId }){
+async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncStatus, waffleFetcherAppInstallationId, latestCommit }){
   const SIDECAR_URL = "http://127.0.0.1" + ":" + (+process.env.PORT + 1);
   const headers = { 'Content-Type': 'application/json', 'X-Worker-Secret': process.env.SIDECAR_SECRET };
   const POLLINIG_INTERVAL_MS = 500;
+  const POLLINIG_TIMEOUT_MS = 10 * 60 * 1000;
  
   const heartbeat = await fetch(`${SIDECAR_URL}/heartbeat`, { method: 'GET', headers })
     .catch(() => { /* best-effort; don’t block read path */ });
  
-    console.log(SIDECAR_URL)
-  if (heartbeat.status === 200) {  
+  if (heartbeat?.status === 200) {  
     updateSyncStatus(`[${slug}:${branch}] Calling sidecar process to do the heavy git operation`);
     const jobId = slug + "+" + branch;
 
     await fetch(`${SIDECAR_URL}/enqueue`, { method: 'POST', headers,
-      body: JSON.stringify({ jobId, action, dir, url, branch, waffleFetcherAppInstallationId })
+      body: JSON.stringify({ jobId, action, dir, url, branch, waffleFetcherAppInstallationId, latestCommit })
     }).catch(() => { /* best-effort; don’t block read path */ });
 
     return new Promise((resolve, reject) => {
 
+      let pollingCounter = 0;
       const intervalId = setInterval(async () => {
         const statusUpdate = await fetch(`${SIDECAR_URL}/status/${jobId}`, { method: 'GET', headers });
 
-        if(statusUpdate.status === 200){
+        if(statusUpdate?.status === 200){
           const json = await statusUpdate.json();
 
           updateSyncStatus(progressTemplate(slug, branch, json.currentJob.progress));
@@ -133,8 +134,16 @@ async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncS
             clearInterval(intervalId);
             resolve();
           } else if (json.currentJob.state === "error"){
+            clearInterval(intervalId);
             reject(json.currentJob.error);
           }
+        }
+
+        //quit trying
+        pollingCounter++;
+        if (pollingCounter * POLLINIG_INTERVAL_MS > POLLINIG_TIMEOUT_MS){
+          clearInterval(intervalId);
+          reject("Stopped trying" + JSON.stringify(statusUpdate));
         }
       }, POLLINIG_INTERVAL_MS)
     });
@@ -145,10 +154,19 @@ async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncS
     const onProgress = (progress) => {
       updateSyncStatus(progressTemplate(slug, branch, progress));
     }
-    if (action === "clone")
-      return git.clone({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, prune: true, force: true, onProgress, onAuth, url });
-    if (action === "fetch")
-      return git.fetch({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, prune: true, force: true, onProgress, onAuth });
+    if (action === "clone") {
+      updateSyncStatus(progressTemplate(slug, branch, {phase: "Cloning..."}));
+      await git.clone({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, prune: true, force: true, onProgress, onAuth, url });
+      return;
+    }
+    if (action === "fetch"){
+      updateSyncStatus(progressTemplate(slug, branch, {phase: "Fetching in the main thread..."}));
+      await git.fetch({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, prune: true, force: true, onProgress, onAuth });
+      updateSyncStatus(progressTemplate(slug, branch, {phase: "Checking out the latest commit in the main thread..."}));
+      await git.checkout({ fs, dir, ref: latestCommit, force: true });
+      updateSyncStatus(progressTemplate(slug, branch, {phase: "Done in the main thread"}));
+      return;
+    }
 
     Log.error("Unknown action and sidecar not avavilable");
   }

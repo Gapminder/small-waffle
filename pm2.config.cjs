@@ -23,7 +23,7 @@ module.exports = {
       watch: false, // change to true if you want live reload in dev
       max_memory_restart: "400M",
       env: {
-        WORKER_PORT: 3334
+        SIDECAR_PORT: 3334
       },
       error_file: "/home/gapminder/logs/gitops-sidecar.error.log",
       out_file: "/home/gapminder/logs/gitops-sidecar.output.log",

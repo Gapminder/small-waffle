@@ -41,7 +41,7 @@ async function tick() {
   next.updatedAt = Date.now();
 
   try {
-    const { dir, branch, url, action, waffleFetcherAppInstallationId} = next.payload;
+    const { dir, branch, url, action, waffleFetcherAppInstallationId, latestCommit} = next.payload;
     
     next.progress = {phase: "Authenticating..."};
     const onAuth = getGithubAuthHandler(waffleFetcherAppInstallationId); 
@@ -57,7 +57,10 @@ async function tick() {
       await git.fetch({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, noTags: true, onProgress, onAuth });
     
       next.progress = {phase: "Checking out the latest commit..."};
-      await git.checkout({ fs, dir, ref: branch, force: true });
+      await git.checkout({ fs, dir, ref: latestCommit, force: true });
+      
+      const result =  await git.resolveRef({ fs, dir, ref: 'HEAD'})
+      console.log(result)
     }
 
     next.progress = {phase: "Job done"};
