@@ -14,7 +14,6 @@ import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
 import { datasetControlList } from "./datasetControl.js";
-import { accessControlListCache } from "./accessControl.js";
 
 import Log from "./logger.js"
 
@@ -128,6 +127,7 @@ export default function initRoutes(api) {
     const branch = ctx.params.branch;
     const commit = ctx.params.commit;
     const referer = ctx.request.headers['referer']; 
+    const user = ctx.state.user;
     
     Log.debug(`Received an info request for ${datasetSlug}/${branch}/${commit}`);
 
@@ -136,6 +136,7 @@ export default function initRoutes(api) {
       queryString: ctx.queryString, 
       type: "info",
       referer,
+      user,
       redirectPrefix: `/info/${datasetSlug}/`,
       callback: async ({success, error})=>{
         
@@ -173,6 +174,7 @@ export default function initRoutes(api) {
     const branch = ctx.params.branch;
     const commit = ctx.params.commit;
     const asset = ctx.params.asset;
+    const user = ctx.state.user;
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer};
 
@@ -181,6 +183,7 @@ export default function initRoutes(api) {
       queryString: ctx.queryString, 
       type: "asset",
       referer,
+      user,
       redirectPrefix: `/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
@@ -215,23 +218,16 @@ export default function initRoutes(api) {
     const branch = ctx.params.branch;
     const commit = ctx.params.commit;
     const queryString = ctx.querystring;
+    const user = ctx.state.user;
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
-
-    function checkAccess(){
-      return accessControlListCache.find(f => f.user_uuid === ctx.state.user.sub && f.dataset === datasetSlug);
-    }
-    const dataset_is_private = datasetControlList.find(f => f.slug === datasetSlug).is_private;
-
-    if (dataset_is_private && (!ctx.state.user || !ctx.state.user.sub || !checkAccess()) ) {
-      ctx.throw(401, 'Unauthorized');
-    }
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
       queryString: queryString, 
       type: "query",
       referer,
+      user,
       redirectPrefix: `/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 

@@ -58,9 +58,6 @@ async function tick() {
     
       next.progress = {phase: "Checking out the latest commit..."};
       await git.checkout({ fs, dir, ref: latestCommit, force: true });
-      
-      const result =  await git.resolveRef({ fs, dir, ref: 'HEAD'})
-      console.log(result)
     }
 
     next.progress = {phase: "Job done"};

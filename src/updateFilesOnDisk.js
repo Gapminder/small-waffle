@@ -118,13 +118,14 @@ async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncS
 
     await fetch(`${SIDECAR_URL}/enqueue`, { method: 'POST', headers,
       body: JSON.stringify({ jobId, action, dir, url, branch, waffleFetcherAppInstallationId, latestCommit })
-    }).catch(() => { /* best-effort; don’t block read path */ });
+    }).catch((e) => { throw e });
 
     return new Promise((resolve, reject) => {
 
       let pollingCounter = 0;
       const intervalId = setInterval(async () => {
-        const statusUpdate = await fetch(`${SIDECAR_URL}/status/${jobId}`, { method: 'GET', headers });
+        const statusUpdate = await fetch(`${SIDECAR_URL}/status/${jobId}`, { method: 'GET', headers })
+          .catch(() => { /* best-effort; don’t block read path */ });
 
         if(statusUpdate?.status === 200){
           const json = await statusUpdate.json();

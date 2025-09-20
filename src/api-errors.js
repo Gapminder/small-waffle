@@ -15,6 +15,11 @@ export default function errors(datasetSlug, branch, commit) {
       `Dataset present in config but not correctly synced: ${datasetSlug}`,
       `Try to sync this dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
     ],
+    DATASET_UNAUTHORIZED: [
+      401,
+      `User doesn't have access to the dataset or needs to login: ${datasetSlug}`,
+      `Log in, make sure you have premission rights, then sync the dataset https://small-waffle.gapminder.org/sync/${datasetSlug}/`
+    ],
     DEFAULT_COMMIT_NOT_RESOLVED: [
       500,
       `Server failed to resolve the default commit for dataset ${datasetSlug}`,
