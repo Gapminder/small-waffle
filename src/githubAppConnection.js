@@ -18,6 +18,11 @@ export async function getInstallationToken(installationId) {
     return cached.token;
   }
 
+  if (process.env.WAFFLE_FETCHER_APP_TOKEN && now < new Date(process.env.WAFFLE_FETCHER_APP_TOKEN_EXPIRESAT).getTime() ) {
+    Log.info(`🔓 Using recycled github auth token, still good for \x1b[33m${Math.round((new Date(process.env.WAFFLE_FETCHER_APP_TOKEN_EXPIRESAT).getTime() - now)/60/1000)} min \x1b[0m`); 
+    return process.env.WAFFLE_FETCHER_APP_TOKEN;
+  }
+
   Log.info(`🔒 Attempting to get a token from Github...`);
   const privateKey = fs.readFileSync(githubAppPrivateKeyPath, "utf8");
   const auth = createAppAuth({ appId, privateKey });
@@ -25,6 +30,7 @@ export async function getInstallationToken(installationId) {
   const { token, expiresAt } = await auth({ type: 'installation', installationId });
   cached = { token, expiresAt: new Date(expiresAt).getTime(), installationId };
   Log.info(`🔓 Got new token from Github. It will expire in ${Math.round((cached.expiresAt - now)/60/1000)} min`);
+  Log.debug(`\x1b[33mDEBUG-ONLY INFO:`, token, expiresAt);
   return token;
 }
 
