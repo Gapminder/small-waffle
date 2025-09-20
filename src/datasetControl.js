@@ -45,7 +45,8 @@ async function updateDatasetControlListFromGoogleSpreadsheet() {
           githubRepoId: row.github_repo_id,
           branches: row.branches.split(",").map(s => s.trim()),
           default_branch: row.default_branch,
-          is_private: row.is_private.trim() === "FALSE" ? false : (row.is_private.trim() === "TRUE" || null)
+          is_private: row.is_private.trim() === "FALSE" ? false : (row.is_private.trim() === "TRUE" || null),
+          waffleFetcherAppInstallationId: row.waffle_fetcher_app_installation_id,
         });
       })
       .on('end', () => resolve(datasetControlList))
@@ -77,7 +78,8 @@ async function updateDatasetControlListFromSupabaseDb() {
     githubRepoId: row.github_repo_id,
     branches: row.branches.split(",").map(s => s.trim()),
     default_branch: row.default_branch,
-    is_private: row.is_private
+    is_private: row.is_private,
+    waffleFetcherAppInstallationId: row.waffle_fetcher_app_installation_id,
   }));
 
 

@@ -14,25 +14,8 @@ import Log from "./logger.js"
 
 const rootPath = path.resolve("./datasets/");
 
-
-
-const dummyReaderInstance = (new DDFCsvReader.getDDFCsvReaderObject()).init({
-  path: path.join(rootPath, 'ddf--gapminder--fasttrack', 'master'),
-  resultTransformer,
-})
-
-/**
- * Dataset version reader instances used to serve the data
- * Filled out during GitHub metadata / dataset refresh
- * @type {{[slug]: {[branch]: DDFCsvReader}}}
- */
-export const datasetVersionReaderInstances = {
-  'slug-dummy': {
-    'branch-dummy': dummyReaderInstance
-  },
-}
-
-export const datasetBranchCommitMapping = {}
+export const datasetVersionReaderInstances = {};
+export const datasetBranchCommitMapping = {};
 export const syncStatus = {ongoing: false, events: []};
 
 export function getBranchFromCommit(datasetSlug, commit) {
@@ -145,7 +128,7 @@ async function loadOneDataset(dataset, branch) {
   📦 ${dataset.slug} ᛘ ${dataset.githubRepoId} ⼘ ${branch}`);
 
   try {
-    await ensurePathExistsAndRepoIsCloned(rootPath, dataset.githubRepoId, branch, updateSyncStatus, dataset.slug);
+    await ensurePathExistsAndRepoIsCloned(rootPath, dataset, branch, updateSyncStatus);
     await loadReaderInstance(dataset, branch);
     updateSyncStatus(`[${dataset.slug}:${branch}] ✓ Load successful`);
   } catch (err) {
@@ -160,8 +143,8 @@ async function syncOneDataset(dataset, branch){
   try {  
     const remoteCommitHash = await requestLatestCommitHash(dataset.githubRepoId, branch);
 
-    await ensurePathExistsAndRepoIsCloned(rootPath, dataset.githubRepoId, branch, updateSyncStatus, dataset.slug);
-    await ensureLatestCommit(rootPath, dataset.githubRepoId, branch, remoteCommitHash, updateSyncStatus, dataset.slug);
+    await ensurePathExistsAndRepoIsCloned(rootPath, dataset, branch, updateSyncStatus);
+    await ensureLatestCommit(rootPath, dataset, branch, remoteCommitHash, updateSyncStatus);
     await loadReaderInstance(dataset, branch);
     updateSyncStatus(`[${dataset.slug}:${branch}] ✓ Sync successful`);
     return "Success";
@@ -178,7 +161,7 @@ async function loadReaderInstance(dataset, branch) {
 
   (datasetVersionReaderInstances[dataset.slug] ??= {})[branch] = readerInstance; //create subobject if missing
 
-  const currentCommit = await getCurrentCommit(rootPath, dataset.githubRepoId, branch);
+  const currentCommit = await getCurrentCommit(rootPath, dataset, branch);
   (datasetBranchCommitMapping[dataset.slug] ??= {}) [branch] = currentCommit; //create subobject if missing
 
   Log.info(`[${dataset.slug}:${branch}] Created a reader instance with commit ${currentCommit.substring(0, 7)}`)

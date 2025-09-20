@@ -15,5 +15,18 @@ module.exports = {
       error_file: "/home/gapminder/logs/error.log",
       out_file: "/home/gapminder/logs/output.log",
       time: true
+    },{
+      name: "gitops-sidecar",
+      script: "git-ops-sidecar-process.index.js",
+      instances: 1, // keep 1 writer to avoid .git lock fights
+      autorestart: true,
+      watch: false, // change to true if you want live reload in dev
+      max_memory_restart: "400M",
+      env: {
+        WORKER_PORT: 3334
+      },
+      error_file: "/home/gapminder/logs/gitops-sidecar.error.log",
+      out_file: "/home/gapminder/logs/gitops-sidecar.output.log",
+      time: true
     }]
   };

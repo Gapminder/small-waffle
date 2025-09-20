@@ -3,8 +3,8 @@ import {getInstallationToken} from "./githubAppConnection.js";
 
 const TIMEOUT_MS = 5000;
 
-export async function requestLatestCommitHash(githubRepoId, branch) {
-  const privateRepoToken = await getInstallationToken();
+export async function requestLatestCommitHash(githubRepoId, branch, waffleFetcherAppInstallationId) {
+  const privateRepoToken = await getInstallationToken(waffleFetcherAppInstallationId);
   const token = privateRepoToken || process.env.GITHUB_TOKEN;
   const url = `https://api.github.com/repos/${githubRepoId}/commits/${branch}`;
   const headers = token ? { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json"} : {};
