@@ -8,6 +8,11 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '6100M',
+      min_uptime: "5s",                 // consider it "failed" if dies before 5s
+      max_restarts: Infinity,                 // stop after 10 rapid retries
+      restart_delay: 2000,              // 2s delay between restarts
+      exp_backoff_restart_delay: 100,   // exponential backoff if it keeps failing
+      kill_timeout: 5000,               // give it 5s to shutdown cleanly
       env: {
           PORT: 3333,
           VERBOSITY: 2
@@ -22,6 +27,11 @@ module.exports = {
       autorestart: true,
       watch: false, // change to true if you want live reload in dev
       max_memory_restart: "1500M",
+      min_uptime: "5s",                 // consider it "failed" if dies before 5s
+      max_restarts: Infinity,                 // stop after 10 rapid retries
+      restart_delay: 2000,              // 2s delay between restarts
+      exp_backoff_restart_delay: 100,   // exponential backoff if it keeps failing
+      kill_timeout: 5000,               // give it 5s to shutdown cleanly
       env: {
         SIDECAR_PORT: 3334
       },

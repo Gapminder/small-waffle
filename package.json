@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start:api": "PORT=4444 VERBOSITY=4 nodemon index.js --ignore datasets/ --ignore events/",
+    "start:api": "PORT=4444 VERBOSITY=4 nodemon index.js --ignore datasets/ --ignore events/ --ignore backup/",
     "start:sidecar": "SIDECAR_PORT=4445 VERBOSITY=4 nodemon git-ops-sidecar-process.index.js --watch git-ops-sidecar-process.index.js",
     "start": "concurrently -k -n API,GITOPS -c green,cyan \"npm:start:api\" \"npm:start:sidecar\"",
     "serve": "pm2 start pm2.config.cjs",

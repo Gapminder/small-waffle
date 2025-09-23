@@ -81,12 +81,17 @@ export /*SYNC!*/ function syncDatasetsIfNotAlreadySyncing(datasetSlug, branch) {
 
 async function prepBigSyncOrLoad(){
   await updateDatasetControlList();
-  
   const allslugs = datasetControlList.length > 0 ? datasetControlList.map(m => m.slug).join(", ") : "";
-  Log.info(`Got info about ${datasetControlList.length} datasets: ${allslugs}`);
+  if(datasetControlList.length)
+    Log.info(`Got info about ${datasetControlList.length} datasets: ${allslugs}`);
+  else
+    throw new Error(`\x1b[31m 💀 🟥 SERVER CRASHED BECAUSE OF MISSING DATASET CONTROL LIST 🟥`);
   
   await updateAccessControlList();
-  Log.info(`Got info about ${accessControlListCache.length} access rules`);
+  if(accessControlListCache.length)
+    Log.info(`Got info about ${accessControlListCache.length} access rules`);
+  else
+    throw new Error(`\x1b[31m 💀 🟥 SERVER CRASHED BECAUSE OF MISSING ACCESS CONTROL LIST 🟥`);
 
   cleanupAllDirectories(rootPath, datasetControlList);
   return allslugs;

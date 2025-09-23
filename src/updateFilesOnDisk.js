@@ -110,7 +110,7 @@ async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncS
   const POLLINIG_TIMEOUT_MS = 10 * 60 * 1000;
  
   const heartbeat = await fetch(`${SIDECAR_URL}/heartbeat`, { method: 'GET', headers })
-    .catch(() => { /* best-effort; don’t block read path */ });
+    .catch(() => { /* swallow error and continue to the else part */ });
  
   if (heartbeat?.status === 200) {  
     updateSyncStatus(`[${slug}:${branch}] Calling sidecar process to do the heavy git operation`);
@@ -125,7 +125,7 @@ async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncS
       let pollingCounter = 0;
       const intervalId = setInterval(async () => {
         const statusUpdate = await fetch(`${SIDECAR_URL}/status/${jobId}`, { method: 'GET', headers })
-          .catch(() => { /* best-effort; don’t block read path */ });
+          .catch(() => { /* swallow the error, keep trying to call the sidecar */ });
 
         if(statusUpdate?.status === 200){
           const json = await statusUpdate.json();

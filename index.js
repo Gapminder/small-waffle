@@ -79,4 +79,34 @@ async function checkMemoryUsage() {
 setInterval(checkMemoryUsage, 60000); // Checks memory usage every minute
 
 
+// Graceful shutdown
+function shutdown(signal) {
+  Log.info(`⛔️ Received ${signal}, shutting down…`);
+  server.close((err) => {
+    if (err) {
+      Log.error("Error while closing server:", err);
+      process.exit(1);
+    }
+    Log.info("✅ Server closed, port released.");
+    process.exit(0);
+  });
+}
+
+// Listen for PM2 / system signals
+process.on("SIGINT",  () => shutdown("SIGINT"));   // Ctrl+C
+process.on("SIGTERM", () => shutdown("SIGTERM"));  // PM2 / systemd
+process.on("SIGHUP",  () => shutdown("SIGHUP"));   // reload signals
+// Nodemon uses SIGUSR2 on restart
+process.on('SIGUSR2', () => shutdown("SIGUSR2"));
+
+// Don’t die messily, log and exit via shutdown
+process.on('uncaughtException', (err) => {
+  Log.error('uncaughtException', err);
+  shutdown("uncaughtException");
+});
+process.on('unhandledRejection', (reason) => {
+  Log.error('unhandledRejection', reason);
+  shutdown("unhandledRejection");
+});
+
 export { app, server };

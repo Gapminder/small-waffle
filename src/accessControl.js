@@ -1,15 +1,22 @@
 import fetch from 'node-fetch';
 import Log from "./logger.js"
+import {readListFromFile, writeListToFile} from './backupDBTables.js'; 
 
 export let accessControlListCache = [];
 
 export async function updateAccessControlList() {
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_ENDPOINT && process.env.SUPABASE_JWT_SECRET){
-      return fetchAccessControlListFromSupabase()
-
-  }
-  else {
-    Log.error(".env file is not configured correctly");
+  try {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_ENDPOINT && process.env.SUPABASE_JWT_SECRET){
+      await fetchAccessControlListFromSupabase()
+    }
+    else {
+      Log.error(".env file is not configured correctly");
+    }
+  } catch (e) {
+    Log.error(e);
+    Log.info("⚠️ CAN NOT ACCESS ACCESS CONTROL LIST, ATTEMPTING TO RESTORE FROM BACKUP");
+    const rows = await readListFromFile('accessControlList.backup.json');
+    if (rows?.length > 0) accessControlListCache = rows;
   }
 }
 
@@ -24,16 +31,18 @@ async function fetchAccessControlListFromSupabase() {
       Authorization: `Bearer ${secret}`,
       Accept: 'application/json'
     }
-  });
+  }).catch(e => {throw e});
 
   if (!response.ok) 
-    throw new Error(`Failed to fetch supabase acl table: ${response.statusText}`);
+    throw new Error(`Failed to fetch supabase ACL table: ${response.statusText}`);
 
   const rows = await response.json();
 
-  accessControlListCache = rows;
+  if (rows?.length > 0) accessControlListCache = rows;
 
-  return Promise.resolve(accessControlListCache);
+  Log.info("Saving access control list to a backup file");
+  await writeListToFile(accessControlListCache, 'accessControlList.backup.json');
+  return accessControlListCache;
 
 }
 

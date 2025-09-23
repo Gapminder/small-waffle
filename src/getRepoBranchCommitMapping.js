@@ -9,9 +9,10 @@ export async function requestLatestCommitHash(githubRepoId, branch, waffleFetche
   const url = `https://api.github.com/repos/${githubRepoId}/commits/${branch}`;
   const headers = token ? { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json"} : {};
 
-  const response = await fetch(url, { headers, signal: AbortSignal.timeout( TIMEOUT_MS ) });
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout( TIMEOUT_MS ) })
+    .catch(() => { /* swallow error */ });
 
-  if (!response.ok)
+  if (!response?.ok)
     throw new Error(`❌ Failed to fetch commit for ${githubRepoId} branch ${branch}: ${response.statusText}`);
 
   const commitData = await response.json();
