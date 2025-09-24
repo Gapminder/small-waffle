@@ -25,7 +25,7 @@ async function fetchAccessControlListFromSupabase() {
   const endpoint = "https://" + process.env.SUPABASE_ENDPOINT;
 
   Log.info(`Updating access control list from Supabase DB ${endpoint}`);
-  const response = await fetch(`${endpoint}/rest/v1/acl`,{
+  const response = await fetch(`${endpoint}/rest/v1/acl?scope=eq.dataset`,{
     headers: {
       apikey: secret,
       Authorization: `Bearer ${secret}`,

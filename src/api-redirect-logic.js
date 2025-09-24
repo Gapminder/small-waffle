@@ -17,7 +17,7 @@ export default async function redirectLogic({params, queryString, type, referer=
 
     function checkAccess(user, datasetSlug){
       if (!user || !user.sub) return false;
-      return accessControlListCache.find(acl => acl.user_uuid === user.sub && acl.dataset === datasetSlug);
+      return accessControlListCache.find(acl => acl.user_uuid === user.sub && acl.resource === datasetSlug);
     }
 
     function error(err, cacheControl = "no-store, max-age=0"){
