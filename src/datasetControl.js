@@ -4,6 +4,7 @@ import Log from "./logger.js"
 import {readListFromFile, writeListToFile} from './backupDBTables.js'; 
 
 export let datasetControlList = [];
+const ALL = "__all__"; //sentinel string hardcoded in the database, the dataset will be cloned into all repos
 
 export async function updateDatasetControlList() {
   try {
@@ -50,7 +51,7 @@ async function updateDatasetControlListFromGoogleSpreadsheet() {
   const parser = response.body.pipe(csv());
 
   for await (const row of parser) {
-    if(row && (row.server === serverId || !row.server))
+    if(row?.server === serverId || row?.server === ALL)
       datasetControlList.push({
         slug: row.id,
         githubRepoId: row.github_repo_id,
@@ -73,7 +74,7 @@ async function updateDatasetControlListFromSupabaseDb() {
   const endpoint = "https://" + process.env.SUPABASE_ENDPOINT;
 
   Log.info(`Updating allowed datasets from Supabase DB ${endpoint}`);
-  const response = await fetch(`${endpoint}/rest/v1/waffle?or=(server.eq.${serverId},server.is.null)`,{
+  const response = await fetch(`${endpoint}/rest/v1/waffle?or=(server.eq.${serverId},server.eq.${ALL})`,{
     headers: {
       apikey: secret,
       Authorization: `Bearer ${secret}`,
