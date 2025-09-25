@@ -31,6 +31,7 @@ export async function updateDatasetControlList() {
 
 
 async function updateDatasetControlListFromGoogleSpreadsheet() {
+  const serverId = process.env.SERVER_ID;
   const spreadsheetPublishOnWebId = process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_PUBLISH_ON_WEB_ID;
   const spreadsheetId = process.env.ALLOWED_DATASETS_GOOGLE_SPREADSHEET_ID;
   const csvUrl = spreadsheetPublishOnWebId 
@@ -49,14 +50,15 @@ async function updateDatasetControlListFromGoogleSpreadsheet() {
   const parser = response.body.pipe(csv());
 
   for await (const row of parser) {
-    datasetControlList.push({
-      slug: row.id,
-      githubRepoId: row.github_repo_id,
-      branches: row.branches.split(",").map(s => s.trim()),
-      default_branch: row.default_branch,
-      is_private: row.is_private.trim() === "FALSE" ? false : (row.is_private.trim() === "TRUE" || null),
-      waffleFetcherAppInstallationId: row.waffle_fetcher_app_installation_id,
-    });
+    if(row && (row.server === serverId || !row.server))
+      datasetControlList.push({
+        slug: row.id,
+        githubRepoId: row.github_repo_id,
+        branches: row.branches.split(",").map(s => s.trim()),
+        default_branch: row.default_branch,
+        is_private: row.is_private.trim() === "FALSE" ? false : (row.is_private.trim() === "TRUE" || null),
+        waffleFetcherAppInstallationId: row.waffle_fetcher_app_installation_id,
+      });
   }
 
   Log.info("Saving DS control list to a backup file");
@@ -66,11 +68,12 @@ async function updateDatasetControlListFromGoogleSpreadsheet() {
 
 
 async function updateDatasetControlListFromSupabaseDb() {
+  const serverId = process.env.SERVER_ID;
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const endpoint = "https://" + process.env.SUPABASE_ENDPOINT;
 
   Log.info(`Updating allowed datasets from Supabase DB ${endpoint}`);
-  const response = await fetch(`${endpoint}/rest/v1/waffle`,{
+  const response = await fetch(`${endpoint}/rest/v1/waffle?or=(server.eq.${serverId},server.is.null)`,{
     headers: {
       apikey: secret,
       Authorization: `Bearer ${secret}`,
