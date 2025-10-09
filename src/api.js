@@ -287,6 +287,97 @@ export default function initRoutes(api) {
     if (success) ctx.body = success;  
   });
 
+
+
+
+
+  /*
+  * OLD API - DEPRECATED V1 API, TO BE DELETED IN V3
+  */  
+  api.get("/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
+
+    const datasetSlug = ctx.params.datasetSlug;
+    const branch = ctx.params.branch;
+    const commit = ctx.params.commit;
+    const queryString = ctx.querystring;
+    const user = ctx.state.user;
+    const referer = ctx.request.headers['referer']; 
+    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
+
+    const {status, error, redirect, success, cacheControl} = await redirectLogic({
+      params: ctx.params, 
+      queryString: queryString, 
+      type: "query",
+      referer,
+      user,
+      redirectPrefix: `/${datasetSlug}/`,
+      getValidationError: () => {
+        if ((typeof queryString !== "string") || queryString.length < 2) 
+          return "NO_QUERY_PROVIDED";
+
+        try {        
+          Urlon.parse(decodeURIComponent(queryString));
+        } catch (err) {
+          return "QUERY_PARSING_ERROR";
+        }
+
+        return false;
+      },
+
+      
+      callback: async ({success, error})=>{
+        const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
+        if (!readerInstance) 
+          return error("NO_READER_INSTANCE");
+
+        try {
+          const ddfQuery = Urlon.parse(decodeURIComponent(queryString));
+
+          if (ddfQuery.test500error)
+            throw "Deliberate 500 error";
+
+          if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "_dummy-private" || datasetSlug == "population" || datasetSlug == "povcalnet") ) {
+            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit});
+            return success({
+              header: ddfQuery.select.key.concat(ddfQuery.select.value),
+              rows: [],
+              version: "",
+              comment: "👋 bomb query prevented, bye"
+            })
+          }
+
+          const event = retrieveEvent(eventTemplate);
+          if (!event) Log.info(`New query to reader --- ${datasetSlug}/${commit}?${queryString}`);
+          const timeStart = new Date().valueOf();
+
+          //ACTUAL READER WORK IS HERE
+          const data = await readerInstance.read(ddfQuery);
+          data.version = commit;
+
+          const timeEnd = new Date().valueOf();
+          const timing = timeEnd - timeStart;
+          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing});
+
+          return success(data);
+        } catch (err) {
+          return error(err);
+        }
+
+      }
+    });
+
+
+    ctx.status = status;
+    ctx.set('Cache-Control', cacheControl);
+    if (error) ctx.throw(status, error);
+    if (redirect) ctx.redirect(redirect);
+    if (success) ctx.body = success;  
+  });
+
+
+
+
+
   api.get("/:possiblyAssetFolder([-a-z_0-9]+)?/(.*)", async (ctx, next) => {
     const possiblyAssetFolder = ctx.params.possiblyAssetFolder;
 

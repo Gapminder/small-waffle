@@ -258,6 +258,13 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('rows').to.have.lengthOf(91506);
     });
+    it('Successful case - datapoints large — DEPRECATED V1 API, TO BE DELETED IN V3', async function() {
+        this.timeout(5000);
+        const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
+        const response = await request(app.callback()).get(`/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.have.property('rows').to.have.lengthOf(91506);
+    });
     it('Successful case - datapoints bomb query population 3D', async () => {
         const query = `_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_`;
         const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
