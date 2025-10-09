@@ -74,7 +74,7 @@ export default function initRoutes(api) {
       ctx.status = 200; 
       ctx.body = JSON.stringify({
         server: {
-          name: "small-waffle",
+          type: "small-waffle",
           uptime_ms: (new Date()).valueOf() - liveSince,
           liveSince,
           memory,
@@ -163,12 +163,7 @@ export default function initRoutes(api) {
   /*
   * Get assets
   */
-  api.get("/open-numbers/(.*)", async (ctx, next) => {
-    //koa-static failed to catch an /open-numbers route, so it came here
-    ctx.status = 404;
-    ctx.body = 'Asset not found';
-  });
-  api.get("/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)?", async (ctx, next) => {
+  api.get("/v2/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)?", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -184,7 +179,7 @@ export default function initRoutes(api) {
       type: "asset",
       referer,
       user,
-      redirectPrefix: `/${datasetSlug}/`,
+      redirectPrefix: `/v2/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
         return !asset ? "ASSET_NOT_PROVIDED" : false;
@@ -212,7 +207,7 @@ export default function initRoutes(api) {
   /*
   * Get data
   */  
-  api.get("/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/v2/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -228,7 +223,7 @@ export default function initRoutes(api) {
       type: "query",
       referer,
       user,
-      redirectPrefix: `/${datasetSlug}/`,
+      redirectPrefix: `/v2/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 
           return "NO_QUERY_PROVIDED";
@@ -254,13 +249,13 @@ export default function initRoutes(api) {
           if (ddfQuery.test500error)
             throw "Deliberate 500 error";
 
-          if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "population" || datasetSlug == "povcalnet") ) {
+          if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "_dummy-private" || datasetSlug == "population" || datasetSlug == "povcalnet") ) {
             recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit});
             return success({
               header: ddfQuery.select.key.concat(ddfQuery.select.value),
               rows: [],
               version: "",
-              comment: "👋 this is not the query you are looking for"
+              comment: "👋 bomb query prevented, bye"
             })
           }
 
@@ -292,7 +287,19 @@ export default function initRoutes(api) {
     if (success) ctx.body = success;  
   });
 
+  api.get("/:possiblyAssetFolder([-a-z_0-9]+)?/(.*)", async (ctx, next) => {
+    const possiblyAssetFolder = ctx.params.possiblyAssetFolder;
 
+    const folders = new Set(datasetControlList.map(item => item.githubRepoId.split('/')[0]));
+    if (folders.has(possiblyAssetFolder)) {
+      //pass on this request to koa-static
+      await next()
+      return
+    }
+    //koa-static failed to catch a route, so it came here
+    ctx.status = 404;
+    ctx.body = 'Route not found';
+  });
 
   // api.get("(.*)", async (ctx, next) => {
   //   if (ctx.url.includes("#api0=true")) {

@@ -2,6 +2,9 @@
 This is a lightweight server for DDFCSV datasets, essentially a node.js wrapper around DDFCSV reader.   
 It is slower than the previous big-waffle solution in terms of selecting and filtering the datasets, but the idea is that it would have a strong cache in front of it and the speed would not matter.
 
+# limitations
+can only serve years for now, see resultTransformer.js
+
 # Getting started
 ## 1. Clone this repo 
 to the server where you intend to run small-waffle from.  
@@ -54,7 +57,7 @@ you should see the output that starts with
 ``` 
   {
     "server": {
-    "name": "small-waffle",
+    "type": "small-waffle",
     "uptime_ms": 67708,
 ```
 
