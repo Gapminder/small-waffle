@@ -146,7 +146,7 @@ async function syncOneDataset(dataset, branch){
   🔄 ${dataset.slug} ᛘ ${dataset.githubRepoId} ⼘ ${branch}`);
   
   try {  
-    const remoteCommitHash = await requestLatestCommitHash(dataset.githubRepoId, branch);
+    const remoteCommitHash = await requestLatestCommitHash(dataset.githubRepoId, branch, dataset.waffleFetcherAppInstallationId);
 
     await ensurePathExistsAndRepoIsCloned(rootPath, dataset, branch, updateSyncStatus);
     await ensureLatestCommit(rootPath, dataset, branch, remoteCommitHash, updateSyncStatus);
