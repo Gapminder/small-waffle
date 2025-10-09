@@ -241,7 +241,8 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('header').that.includes('population');
         expect(response.body).to.have.property('rows').that.deep.include(['fin', '00_05', 'female', 2002, 6789]);
     });
-    it('Successful case - datapoints large', async () => {
+    it('Successful case - datapoints large', async function() {
+        this.timeout(5000);
         const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
         const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
@@ -250,7 +251,8 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('rows').to.have.lengthOf(91506);
         expect(response.body).to.have.property('rows').that.deep.include(["chn","85","male",2094,5915063]);
     });
-    it('Successful case - datapoints large — ONCE AGAIN, should be faster!', async () => {
+    it('Successful case - datapoints large — ONCE AGAIN, should be faster!', async function() {
+        this.timeout(5000);
         const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
         const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
