@@ -28,7 +28,7 @@ describe('API Routes: STATUS', () => {
     it('Status has _dummy as one of the datasetControlList', async () => {
         expect(status.datasetControlList).to.deep.include({
             slug: "_dummy",
-            githubRepoId: "vizabi/ddf--gapminder--dummy_companies",
+            githubRepoId: "vizabi/ddf--test--companies",
             branches: ["master", "develop"],
             default_branch: "master",
             is_private: false,
@@ -87,7 +87,7 @@ describe('API Routes: INFO', () => {
     it('Successful case - info', async () => {
         const response = await request(app.callback()).get('/info/_dummy/master/'+dummyMasterLatestCommit);
         expect(response.status).to.equal(200);
-        expect(response.body).to.have.property('name', 'ddf--gapminder--dummy_companies');
+        expect(response.body).to.have.property('name', 'ddf--test--companies-name-in-datapackage');
     });
 });
 
@@ -136,15 +136,15 @@ describe('API Routes: ASSETS', () => {
         const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}/assets/waffle.png`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include("/vizabi/ddf--gapminder--dummy_companies/master/assets/waffle.png");
+        expect(response.text).to.include("/vizabi/ddf--test--companies/master/assets/waffle.png");
     });
     it('Successful case - JSON asset', async () => {
-        const response = await request(app.callback()).get("/vizabi/ddf--gapminder--dummy_companies/master/assets/world-50m.json");
+        const response = await request(app.callback()).get("/vizabi/ddf--test--companies/master/assets/world-50m.json");
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('type', 'Topology');
     });
     it('Successful case - PNG asset', async () => {
-        const response = await request(app.callback()).get("/vizabi/ddf--gapminder--dummy_companies/master/assets/waffle.png");
+        const response = await request(app.callback()).get("/vizabi/ddf--test--companies/master/assets/waffle.png");
         expect(response.status).to.equal(200);
         expect(response.headers['content-type']).to.include('image/png');
         expect(response.headers).to.have.property('content-length');
