@@ -128,7 +128,7 @@ export default function initRoutes(api) {
     const commit = ctx.params.commit;
     const referer = ctx.request.headers['referer']; 
     const user = ctx.state.user;
-    const permalinkToken = ctx.get('X-Share-Token');
+    const permalinkToken = ctx.get('x-share-token');
     
     Log.debug(`Received an info request for ${datasetSlug}/${branch}/${commit}`);
 
@@ -172,7 +172,7 @@ export default function initRoutes(api) {
     const commit = ctx.params.commit;
     const asset = ctx.params.asset;
     const user = ctx.state.user;
-    const permalinkToken = ctx.get('X-Share-Token');
+    const permalinkToken = ctx.get('x-share-token');
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer};
 
@@ -218,7 +218,7 @@ export default function initRoutes(api) {
     const commit = ctx.params.commit;
     const queryString = ctx.querystring;
     const user = ctx.state.user;
-    const permalinkToken = ctx.get('X-Share-Token');
+    const permalinkToken = ctx.get('x-share-token');
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
 

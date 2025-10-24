@@ -40,7 +40,7 @@ app.use(cors({
   origin: ctx => ctx.get("Origin") || "*", //super permissive policy
   credentials: true,               // if you use cookies/auth headers
   allowMethods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowHeaders: ['Content-Type','Authorization','X-Share-Token'],
+  allowHeaders: ['Content-Type','Authorization','x-share-token'],
   maxAge: 86400
 }));
 
