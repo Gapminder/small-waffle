@@ -128,6 +128,7 @@ export default function initRoutes(api) {
     const commit = ctx.params.commit;
     const referer = ctx.request.headers['referer']; 
     const user = ctx.state.user;
+    const permalinkToken = ctx.get('X-Share-Token');
     
     Log.debug(`Received an info request for ${datasetSlug}/${branch}/${commit}`);
 
@@ -137,6 +138,7 @@ export default function initRoutes(api) {
       type: "info",
       referer,
       user,
+      permalinkToken,
       redirectPrefix: `/info/${datasetSlug}/`,
       callback: async ({success, error})=>{
         
@@ -170,6 +172,7 @@ export default function initRoutes(api) {
     const commit = ctx.params.commit;
     const asset = ctx.params.asset;
     const user = ctx.state.user;
+    const permalinkToken = ctx.get('X-Share-Token');
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer};
 
@@ -179,6 +182,7 @@ export default function initRoutes(api) {
       type: "asset",
       referer,
       user,
+      permalinkToken,
       redirectPrefix: `/v2/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
@@ -214,6 +218,7 @@ export default function initRoutes(api) {
     const commit = ctx.params.commit;
     const queryString = ctx.querystring;
     const user = ctx.state.user;
+    const permalinkToken = ctx.get('X-Share-Token');
     const referer = ctx.request.headers['referer']; 
     const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
 
@@ -223,6 +228,7 @@ export default function initRoutes(api) {
       type: "query",
       referer,
       user,
+      permalinkToken,
       redirectPrefix: `/v2/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 

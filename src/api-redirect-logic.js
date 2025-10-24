@@ -5,19 +5,20 @@ import {
     getDefaultBranch
   } from "./datasetManagement.js";
 
-import { accessControlListCache } from "./accessControl.js";
+import { accessControlListCache, permalinkAccessControlListCache } from "./accessControl.js";
 import { recordEvent } from "./event-analytics.js";
 import errors from "./api-errors.js";
 
-export default async function redirectLogic({params, queryString, type, referer="", user = "", redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
+export default async function redirectLogic({params, queryString, type, referer="", user = "", permalinkToken = "", redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
     const {datasetSlug, branch, commit, asset} = params; 
     const eventTemplate = {type, asset, datasetSlug, branch, commit, queryString, referer};
     
     const knownErrors = errors(datasetSlug, branch, commit);
 
-    function checkAccess(user, datasetSlug){
-      if (!user || !user.sub) return false;
-      return accessControlListCache.find(acl => acl.user_uuid === user.sub && acl.resource === datasetSlug);
+    function checkAccess(user, permalinkToken, datasetSlug){
+      if ((!user || !user.sub) && !permalinkToken) return false;
+      return accessControlListCache.find(acl => acl.user_uuid === user.sub && acl.resource === datasetSlug)
+        || permalinkAccessControlListCache.find(pacl => pacl.token_hash === permalinkToken && pacl.resource === datasetSlug);
     }
 
     function error(err, cacheControl = "no-store, max-age=0"){
@@ -60,7 +61,7 @@ export default async function redirectLogic({params, queryString, type, referer=
     if (!branchCommitMapping) 
       return error("DATASET_NOT_FOUND");
 
-    if (getDatasetFromSlug(datasetSlug)?.is_private && !checkAccess(user, datasetSlug))
+    if (getDatasetFromSlug(datasetSlug)?.is_private && !checkAccess(user, permalinkToken, datasetSlug))
       return error("DATASET_UNAUTHORIZED");
 
     const validationError = getValidationError && getValidationError();
