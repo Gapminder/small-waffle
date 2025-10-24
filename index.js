@@ -36,18 +36,18 @@ await loadAllDatasets();
 await loadEventsFromFile();
 initRoutes(api);
 
-if(process.env.SUPABASE_JWT_SECRET) app.use(jwt({
-  secret: process.env.SUPABASE_JWT_SECRET, 
-  algorithms: ["HS256"],
-  passthrough: true
-}));
-
 app.use(cors({
   origin: ctx => ctx.get("Origin") || "*", //super permissive policy
   credentials: true,               // if you use cookies/auth headers
   allowMethods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowHeaders: ['Content-Type','Authorization'],
+  allowHeaders: ['Content-Type','Authorization','X-Share-Token'],
   maxAge: 86400
+}));
+
+if(process.env.SUPABASE_JWT_SECRET) app.use(jwt({
+  secret: process.env.SUPABASE_JWT_SECRET, 
+  algorithms: ["HS256"],
+  passthrough: true
 }));
 
 app.use(api.routes());
