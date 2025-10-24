@@ -24,6 +24,10 @@ export async function getInstallationToken(installationId) {
   }
 
   Log.info(`🔒 Attempting to get a token from Github...`);
+  if (!githubAppPrivateKeyPath || !fs.existsSync(githubAppPrivateKeyPath)) {
+    Log.error(`🔴 Github App private key not found at path: ${githubAppPrivateKeyPath}. Set WAFFLE_FETCHER_APP_PRIVATE_KEY_PATH to a valid file path and check that the file is present.`);
+    return null; // → treat as public
+  }
   const privateKey = fs.readFileSync(githubAppPrivateKeyPath, "utf8");
   const auth = createAppAuth({ appId, privateKey });
 
