@@ -1,14 +1,21 @@
 import request from 'supertest';
 import * as chai from 'chai';
 import {app, server} from '../index.js';
+import errors from '../src/api-errors.js';
 
 const expect = chai.expect;
+
+const fakeUserReader = { email: "reader@test.com", sub: "73765977-e818-41b4-8855-9a3144290ed9" }; 
+const fakeUserEditor = { email: "editor@test.com", sub: "5b11e190-3e5e-418b-802b-343776ac399c" };
+const fakeUserOwner = { email: "editor@test.com", sub: "66efa603-51ea-4b96-ad9b-4507e87c9d35" };
 
 //Get latest commits
 const statusResponse = await request(app.callback()).get('/status');
 const status = JSON.parse(statusResponse.text);
 
-const infoResponse = await request(app.callback()).get('/info');
+const infoResponse = await request(app.callback()).get('/info')
+  .set('x-test-user-sub', fakeUserOwner.sub)
+  .set('x-test-user-email', fakeUserOwner.email);
 const info = JSON.parse(infoResponse.text);
 
 const dummyMasterLatestFullCommit = info.datasetBranchCommitMapping["_dummy"].master;
@@ -21,6 +28,11 @@ after(done => {
     server.close(done);
 });
 
+function getError(key, datasetSlug, branch, commit) {
+    const [status, shortMessage, messageExtra] = errors(datasetSlug, branch, commit)[key];
+    return {status, shortMessage, messageExtra};
+}
+
 describe('API Routes: STATUS', () => {
     it('Status has server info', async () => {
         expect(status).to.have.nested.property('type', 'small-waffle');
@@ -32,18 +44,31 @@ describe('API Routes: STATUS', () => {
 
 
 describe('API Routes: SYNC', () => {
-    it('Sync one dataset _dummy', async () => {
-        const response = await request(app.callback()).get("/sync/_dummy");
-        expect(response.status).to.equal(200);
-        expect(response.body).to.have.property('ongoing');
-    });
+  it('Sync one dataset _dummy', async () => {
+    const response = await request(app.callback()).get("/sync/_dummy");
+    const {status, shortMessage} = getError("SYNC_UNAUTHORIZED", "_dummy");
+    expect(response.status).to.equal(status);
+    expect(response.text).to.include(shortMessage);
+  });
+  it('Sync one dataset _dummy', async () => {
+    const response = await request(app.callback()).get("/sync/_dummy")
+      .set('x-test-user-sub', fakeUserEditor.sub)
+      .set('x-test-user-email', fakeUserEditor.email);
+    expect(response.status).to.equal(200);
+    expect(response.body).to.have.property('ongoing');
+  });
 });
 
 
 describe('API Routes: INFO', () => {
-    it('Info has _dummy as one of the datasetControlList', async () => {
-        const response = await request(app.callback()).get('/info');
-        const info = JSON.parse(response.text);
+    it('Info without login returns empty DCL and empty BCM', async () => {        
+      const infoResponse = await request(app.callback()).get('/info')
+      const info = JSON.parse(infoResponse.text);
+      expect(infoResponse.status).to.equal(200);
+      expect(info).to.have.property('datasetControlList').that.has.length(0);
+      expect(info).to.have.property('datasetBranchCommitMapping').that.is.empty;
+    });
+    it('Info has _dummy in DCL', async () => {        
         expect(info.datasetControlList).to.deep.include({
             slug: "_dummy",
             githubRepoId: "vizabi/ddf--test--companies",
@@ -53,9 +78,7 @@ describe('API Routes: INFO', () => {
             waffleFetcherAppInstallationId: null
         });
     });
-    it('Info has _dummy in datasetBranchCommitMapping', async () => {
-        const response = await request(app.callback()).get('/info');
-        const info = JSON.parse(response.text);
+    it('Info has _dummy in BCM', async () => {
         expect(info.datasetBranchCommitMapping).to.have.nested.property("_dummy.master", dummyMasterLatestFullCommit);
     });
     it('DATASET_NOT_CONFIGURED', async () => {
@@ -64,31 +87,41 @@ describe('API Routes: INFO', () => {
         expect(response.text).to.include("Dataset not configured");
     });
     it('Redirect when branch is not given', async () => {
-        const response = await request(app.callback()).get('/info/_dummy');
+        const response = await request(app.callback()).get('/info/_dummy')
+          .set('x-test-user-sub', fakeUserReader.sub)
+          .set('x-test-user-email', fakeUserReader.email);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/info/_dummy/master/" + dummyMasterLatestCommit);
     });
     it('Redirect when branch is unknown', async () => {
-        const response = await request(app.callback()).get('/info/_dummy/unknownsomething');
+        const response = await request(app.callback()).get('/info/_dummy/unknownsomething')
+          .set('x-test-user-sub', fakeUserReader.sub)
+          .set('x-test-user-email', fakeUserReader.email);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/info/_dummy/master/" + dummyMasterLatestCommit);
     });
     it('Redirect when branch is a known branch', async () => {
-        const response = await request(app.callback()).get('/info/_dummy/master');
+        const response = await request(app.callback()).get('/info/_dummy/master')
+          .set('x-test-user-sub', fakeUserReader.sub)
+          .set('x-test-user-email', fakeUserReader.email);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/info/_dummy/master/" + dummyMasterLatestCommit);
     });
     it('Redirect when commit is unknown', async () => {
-        const response = await request(app.callback()).get('/info/_dummy/master/unknowncommit');
+        const response = await request(app.callback()).get('/info/_dummy/master/unknowncommit')
+          .set('x-test-user-sub', fakeUserReader.sub)
+          .set('x-test-user-email', fakeUserReader.email);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/info/_dummy/master/" + dummyMasterLatestCommit);
     });
     it('Successful case - info', async () => {
-        const response = await request(app.callback()).get('/info/_dummy/master/'+dummyMasterLatestCommit);
+        const response = await request(app.callback()).get('/info/_dummy/master/'+dummyMasterLatestCommit)
+          .set('x-test-user-sub', fakeUserReader.sub)
+          .set('x-test-user-email', fakeUserReader.email);
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('name', 'ddf--test--companies-name-in-datapackage');
     });
@@ -165,17 +198,17 @@ describe('API Routes: ASSETS', () => {
 
 
 describe('API Routes: DATA', () => {
-    it('NO_QUERY_PROVIDED', async () => {
+    it('NO_QUERY_PROVIDED 1', async () => {
         const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
-    it('NO_QUERY_PROVIDED', async () => {
+    it('NO_QUERY_PROVIDED 2', async () => {
         const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
-    it('NO_QUERY_PROVIDED', async () => {
+    it('NO_QUERY_PROVIDED 3', async () => {
         const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?_`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");

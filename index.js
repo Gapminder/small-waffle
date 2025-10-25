@@ -50,6 +50,17 @@ if(process.env.SUPABASE_JWT_SECRET) app.use(jwt({
   passthrough: true
 }));
 
+// Test-only user injection: runs before routes
+if (process.env.NODE_ENV === 'test') {
+  app.use(async (ctx, next) => {
+    ctx.state.user = {
+      sub: ctx.get('x-test-user-sub') || "",
+      email: ctx.get('x-test-user-email') || ""
+    };
+    await next();
+  });
+}
+
 app.use(api.routes());
 
 app.use(compress());

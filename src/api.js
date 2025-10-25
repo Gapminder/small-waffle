@@ -12,9 +12,10 @@ import { recordEvent, retrieveEvents, retrieveEvent, backupEvents, resetEvents }
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
-import { datasetControlList } from "./datasetControl.js";
+import { datasetControlList, updateDatasetControlList } from "./datasetControl.js";
 import { accessControlListLookup, permalinkAccessControlListLookup, updateAccessControl } from "./accessControl.js";
 import { getInfoAboutAllDatasets } from "./api-getinfo-allds.js";
+import { checkServerAccess } from "./accessControl.js";
 
 import Log from "./logger.js"
 
@@ -27,6 +28,7 @@ export default function initRoutes(api) {
   */
   api.get("/events", async (ctx, next) => {
     Log.debug("Received a request to list all events");
+    ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; //not cached through cloudflare cache rule
     ctx.body = JSON.stringify(retrieveEvents());
   });
@@ -37,6 +39,7 @@ export default function initRoutes(api) {
   api.get("/backupevents/:filename([-a-z_0-9]+)?", async (ctx, next) => {
     Log.debug("Received a request to backup events");
     let filename = ctx.params.filename || "manual-backup";
+    ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; //not cached through cloudflare cache rule
     const backupStatus = await backupEvents({filename, timestamp: true});
     ctx.body = JSON.stringify(backupStatus);
@@ -47,6 +50,7 @@ export default function initRoutes(api) {
   */
   api.get("/resetevents", async (ctx, next) => {
     Log.debug("Received a request to reset all events");
+    ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; //not cached through cloudflare cache rule
     const resetStatus = await resetEvents();
     ctx.body = JSON.stringify(resetStatus);
@@ -70,6 +74,7 @@ export default function initRoutes(api) {
       heapUsed_PCT: Math.round(heapUsed/heap_size_limit * 100)
     }
 
+    ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; 
     ctx.body = JSON.stringify({
       type: "small-waffle",
@@ -89,15 +94,22 @@ export default function initRoutes(api) {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
-    const result = syncDatasetsIfNotAlreadySyncing(datasetSlug, branch);
-    ctx.status = 200; 
-    ctx.body = result;
+    const user = ctx.state.user;
+    const referer = ctx.request.headers['referer']; 
+
+    const {status, success, error} = syncDatasetsIfNotAlreadySyncing(datasetSlug, branch, user, referer);
+    
+    ctx.status = status;
+    ctx.set('Cache-Control', "no-store, max-age=0");
+    if (error) ctx.throw(status, error);
+    if (success) ctx.body = success;
   });
 
   /*
   * Check sync progress
   */
   api.get("/syncprogress", async (ctx, next) => {
+    ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; 
     ctx.body = syncStatus;
   });
@@ -106,17 +118,61 @@ export default function initRoutes(api) {
   /*
   * Sync only access control
   */
-  api.get("/synconly", async (ctx, next) => {
+  api.get("/synconly/acl", async (ctx, next) => {
+    const user = ctx.state.user;
+    const referer = ctx.request.headers['referer']; 
+
+    const canEditServer = checkServerAccess(user, "editor");
+    if (!canEditServer) {
+      ctx.status = 401;
+      ctx.set('Cache-Control', "no-store, max-age=0");
+      ctx.throw(401, "Operation Unauthorized");
+      return
+    }
+
+    const oldUserRuleNumber = accessControlListLookup.size;
+    const oldPermalinkRuleNumber = permalinkAccessControlListLookup.size;
     const {accessControlListLookup: aclL, permalinkAccessControlListLookup: paclL} = await updateAccessControl();
+
+    ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; 
     ctx.body = JSON.stringify({
-      oldUserRuleNumber: accessControlListLookup.size,
-      oldPermalinkRuleNumber: permalinkAccessControlListLookup.size,
+      oldUserRuleNumber,
+      oldPermalinkRuleNumber,
       newUserRuleNumber: aclL.size,
       newPermalinkRuleNumber: paclL.size
     });
   });
+
+
   
+  /*
+  * Sync only access control
+  */
+  api.get("/synconly/dcl", async (ctx, next) => {
+    const user = ctx.state.user;
+    const referer = ctx.request.headers['referer']; 
+
+    const canEditServer = checkServerAccess(user, "editor");
+    if (!canEditServer) {
+      ctx.status = 401;
+      ctx.set('Cache-Control', "no-store, max-age=0");
+      ctx.throw(401, "Operation Unauthorized");
+      return
+    }
+
+    const oldDatasetsNumber = datasetControlList.length;
+    await updateDatasetControlList();  
+
+    ctx.set('Cache-Control', "no-store, max-age=0");
+    ctx.status = 200; 
+    ctx.body = JSON.stringify({
+      oldDatasetsNumber,
+      newDatasetsNumber: datasetControlList.length
+    });
+  });
+
+
 
   /*
   * Get dataset info

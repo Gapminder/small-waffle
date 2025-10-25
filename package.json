@@ -1,6 +1,6 @@
 {
   "name": "small-waffle",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",
@@ -9,7 +9,7 @@
     "start:sidecar": "SIDECAR_PORT=4445 VERBOSITY=4 nodemon git-ops-sidecar-process.index.js --watch git-ops-sidecar-process.index.js",
     "start": "concurrently -k -n API,GITOPS -c green,cyan \"npm:start:api\" \"npm:start:sidecar\"",
     "serve": "pm2 start pm2.config.cjs",
-    "test": "export PORT=4444 && export VERBOSITY=0 && export EVENTFILENAME=test && mocha --timeout 2000",
+    "test": "export PORT=4444 && export VERBOSITY=0 && export EVENTFILENAME=test && export NODE_ENV=test && mocha --timeout 2000",
     "build": "echo 'No build step required for serverless functions'"
   },
   "author": "",

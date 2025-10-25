@@ -1,14 +1,15 @@
 import { datasetControlList } from "./datasetControl.js"
 import { datasetBranchCommitMapping } from "./datasetManagement.js";
-import { checkAccess } from "./accessControl.js";
+import { checkServerAccess, checkDatasetAccess } from "./accessControl.js";
 
 export function getInfoAboutAllDatasets({user = {}}){
 
-  const filteredDCL = datasetControlList.filter(dataset => !dataset.is_private || checkAccess({
-      user_uuid: user?.sub,
-      resource: dataset.slug,
-      minimumNeededLevel: "reader"
-    }))
+  const filteredDCL = datasetControlList.filter(dataset => {
+    const isServerOwner = checkServerAccess(user, "owner");
+    const canReadServer = checkServerAccess(user, "reader");
+    const canReadDS = checkDatasetAccess(user, dataset.slug, "reader");
+    return isServerOwner || (dataset.is_private ? canReadServer && canReadDS : canReadServer);
+  })
   
   const filteredBCM = {};
   filteredDCL.forEach(dataset => filteredBCM[dataset.slug] = datasetBranchCommitMapping[dataset.slug]);

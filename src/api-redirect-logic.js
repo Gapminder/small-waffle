@@ -5,7 +5,7 @@ import {
     getDefaultBranch
   } from "./datasetManagement.js";
 
-import { checkAccess } from "./accessControl.js";
+import { checkServerAccess, checkDatasetAccess } from "./accessControl.js";
 import { recordEvent } from "./event-analytics.js";
 import errors from "./api-errors.js";
 
@@ -26,7 +26,7 @@ export default async function redirectLogic({params, queryString, type, referer=
         // known error
         const [status, shortMessage, messageExtra] = knownError;
         recordEvent({...eventTemplate, status, comment: shortMessage});
-        return {status, error: `${shortMessage} ${messageExtra}`, cacheControl};
+        return {status, error: `${shortMessage} \n ${messageExtra}`, cacheControl};
 
       } else if (typeof err === "string" 
         && (err.includes("Too many query structure errors") || err.includes("Too many query definition errors"))) {        
@@ -52,21 +52,25 @@ export default async function redirectLogic({params, queryString, type, referer=
     if(!datasetSlug) 
       return error("NO_DATASET_GIVEN");
   
-    if(!getDatasetFromSlug(datasetSlug)) 
+    const dataset = getDatasetFromSlug(datasetSlug);
+    if(!dataset) 
       return error("DATASET_NOT_CONFIGURED");
   
     const branchCommitMapping = datasetBranchCommitMapping[datasetSlug];
     if (!branchCommitMapping) 
       return error("DATASET_NOT_FOUND");
 
-    if (getDatasetFromSlug(datasetSlug)?.is_private && !checkAccess({
-        user_uuid: user?.sub,
-        token_hash: permalinkToken,
-        resource: datasetSlug,
-        minimumNeededLevel: "reader"
-      }))
+    const isServerOwner = checkServerAccess(user, "owner");
+    const canReadServer = checkServerAccess(user, "reader");
+    const canReadDS = checkDatasetAccess( {sub: user?.sub, permalinkToken}, datasetSlug, "reader" );
+    
+    if (type === "info" && !isServerOwner && !(dataset.is_private ? canReadServer && canReadDS : canReadServer) )
       return error("DATASET_UNAUTHORIZED");
 
+    if ((type === "query" || type === "asset") && dataset.is_private && !canReadDS )
+      return error("DATASET_UNAUTHORIZED");
+
+    
     const validationError = getValidationError && getValidationError();
     if (validationError)
       return error(validationError)

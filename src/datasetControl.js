@@ -28,6 +28,14 @@ export async function updateDatasetControlList() {
     const rows = await readListFromFile('datasetControlList.backup.json');
     if (rows?.length > 0) datasetControlList = rows;
   }
+
+  const allslugs = datasetControlList.length > 0 ? datasetControlList.map(m => m.slug).join(", ") : "";
+  if(datasetControlList.length)
+    Log.info(`Got info about ${datasetControlList.length} datasets: ${allslugs}`);
+  else
+    throw new Error(`\x1b[31m 💀 🟥 SERVER CRASHED BECAUSE OF MISSING DATASET CONTROL LIST 🟥`);
+
+  return allslugs
 }
 
 

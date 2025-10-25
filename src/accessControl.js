@@ -7,35 +7,42 @@ export let permalinkAccessControlListLookup = new Map();
 
 
 
-export async function checkAccess({user_uuid, token_hash, resource, minimumNeededLevel = "reader"}){
-  const serverId = process.env.SERVER_ID;
-
-  if ((!user_uuid && !token_hash) || !resource) return false;
-  function isLevelEnough(usersLevel, neededLevel){
-    if (!usersLevel) return false; // acl record not found
-    if (neededLevel === "reader") return usersLevel === "owner" || usersLevel === "editor" || usersLevel === "reader";
-    if (neededLevel === "editor") return usersLevel === "owner" || usersLevel === "editor";
-    if (neededLevel === "owner") return usersLevel === "owner";
-  }
-  return 0
-    //check if server permissions are enough do do the action
-    || isLevelEnough(accessControlListLookup.get([user_uuid, "server", serverId].join(".")), minimumNeededLevel)
-    //if not, look for dataset permissions
-    || isLevelEnough(accessControlListLookup.get([user_uuid, "dataset", resource].join(".")), minimumNeededLevel)
-    //finally, look for permissions via shared link
-    || isLevelEnough(permalinkAccessControlListLookup.get([token_hash, "dataset", resource].join(".")), minimumNeededLevel);
+function isLevelEnough(usersLevel, neededLevel){
+  if (!usersLevel) return false; // acl record not found
+  if (neededLevel === "reader") return usersLevel === "owner" || usersLevel === "editor" || usersLevel === "reader";
+  if (neededLevel === "editor") return usersLevel === "owner" || usersLevel === "editor";
+  if (neededLevel === "owner") return usersLevel === "owner";
 }
-
-
-
 function arrayToLookup(array, {key, valueField = "level", defaultValue = "reader"}){
-  return array.map((d) => {
+  const lookup = array.map((d) => {
       const k = key.map(field => d[field]).join(".");
       const v = d[valueField] || defaultValue;
       return [k, v];
     });
+  return new Map(lookup);
 }
 
+
+
+export function checkServerAccess(user = {}, atLeast = "reader"){
+  const serverId = process.env.SERVER_ID;
+  const user_uuid = user?.sub;
+
+  if (!user_uuid || !serverId) return false;
+  return 0
+    || isLevelEnough(accessControlListLookup.get([user_uuid, "server", serverId].join(".")), atLeast)
+    //below is to allow test reader,editor,owner accounts that have access to all servers
+    || isLevelEnough(accessControlListLookup.get([user_uuid, "server", "__all__"].join(".")), atLeast) && process.env.NODE_ENV === "test";
+}
+export function checkDatasetAccess(user = {}, resource, atLeast = "reader"){
+  const user_uuid = user?.sub;
+  const token_hash = user?.permalinkToken;
+
+  if (!user_uuid && !token_hash || !resource) return false;
+  return 0
+    || isLevelEnough(accessControlListLookup.get([user_uuid, "dataset", resource].join(".")), atLeast)
+    || isLevelEnough(permalinkAccessControlListLookup.get([token_hash, "dataset", resource].join(".")), atLeast);
+}
 
 
 export async function updateAccessControl() {
@@ -50,7 +57,7 @@ export async function updateAccessControl() {
     Log.error(e);
     Log.info("⚠️ CAN NOT FETCH ACCESS CONTROL LIST, ATTEMPTING TO RESTORE FROM BACKUP");
     const rows = await readListFromFile('accessControlList.backup.json');
-    if (rows?.length > 0) accessControlListLookup = new Map(arrayToLookup(rows, {key: ["user_uuid","scope","resource"]}));
+    if (rows?.length > 0) accessControlListLookup = arrayToLookup(rows, {key: ["user_uuid","scope","resource"]});
   }
   try {
     if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_ENDPOINT && process.env.SUPABASE_JWT_SECRET){
@@ -63,7 +70,7 @@ export async function updateAccessControl() {
     Log.error(e);
     Log.info("⚠️ CAN NOT FETCH PERMALINK ACCESS CONTROL LIST, ATTEMPTING TO RESTORE FROM BACKUP");
     const rows = await readListFromFile('permalinkAccessControlList.backup.json');
-    if (rows?.length > 0) permalinkAccessControlListLookup = new Map(arrayToLookup(rows, {key: ["token_hash","scope","resource"]}));
+    if (rows?.length > 0) permalinkAccessControlListLookup = arrayToLookup(rows, {key: ["token_hash","scope","resource"]});
   }
   Log.info(`Number of access rules for users: ${accessControlListLookup.size}`);
   Log.info(`Number of access rules for permalinks: ${permalinkAccessControlListLookup.size}`);
@@ -95,7 +102,7 @@ async function fetchAccessControlListFromSupabase() {
 
   Log.info("Saving access control list to a backup file");
   await writeListToFile(rows, 'accessControlList.backup.json');
-  accessControlListLookup = new Map(arrayToLookup(rows, {key: ["user_uuid","scope","resource"]}));
+  accessControlListLookup = arrayToLookup(rows, {key: ["user_uuid","scope","resource"]});
 }
 
 
@@ -123,6 +130,6 @@ async function fetchPermalinkAccessControlListFromSupabase() {
 
   Log.info("Saving permalink access control list to a backup file");
   await writeListToFile(rows, 'permalinkAccessControlList.backup.json');
-  permalinkAccessControlListLookup = new Map(arrayToLookup(rows, {key: ["token_hash","scope","resource"]}));
+  permalinkAccessControlListLookup = arrayToLookup(rows, {key: ["token_hash","scope","resource"]});
 }
 

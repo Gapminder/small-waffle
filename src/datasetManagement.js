@@ -9,8 +9,11 @@ import {
   cleanupAllDirectories
 } from "./updateFilesOnDisk.js";
 import { updateDatasetControlList, datasetControlList } from "./datasetControl.js";
-import { updateAccessControl } from "./accessControl.js";
+import { checkServerAccess, checkDatasetAccess, updateAccessControl } from "./accessControl.js";
 import Log from "./logger.js"
+import errors from "./api-errors.js";
+import { recordEvent } from "./event-analytics.js";
+
 
 const rootPath = path.resolve("./datasets/");
 
@@ -53,43 +56,82 @@ export function updateSyncStatus(comment, addnew) {
   Log.info(comment);
 }
 
-export /*SYNC!*/ function syncDatasetsIfNotAlreadySyncing(datasetSlug, branch) {
-  if (syncStatus.ongoing) return syncStatus;
+export /*SYNC!*/ function syncDatasetsIfNotAlreadySyncing(datasetSlug, branch, user, referer) {
+  if (syncStatus.ongoing) return {status: 200, success: syncStatus};
 
-  syncStatus.ongoing = true;
   syncStatus.events = [];
   const done = () => {syncStatus.ongoing = false};
+
+  const eventTemplate = {type: "sync", datasetSlug, branch, referer};
+  const knownErrors = errors(datasetSlug, branch);  
+  function error(err){
+    const knownError = knownErrors[err];
+    if (!err.stack && knownError && knownError.length === 3) {
+        // known error
+        const [status, shortMessage, messageExtra] = knownError;
+        recordEvent({...eventTemplate, status, comment: shortMessage});
+        return {status, error: `${shortMessage} \n ${messageExtra}`};
+
+      } else {
+        // unknown error
+        recordEvent({...eventTemplate, status: 500, comment: err.message ? err.message : err, stack:err.stack});
+        return {status: 500, error: err.message ? err.message : err};
+      }
+  }
+    
+  const isServerOwner = checkServerAccess(user, "owner");
+  const canEditServer = checkServerAccess(user, "editor");
+  const canEditDS = checkDatasetAccess(user, datasetSlug, "editor");
+
+  if (!canEditServer)
+      return error("SYNC_UNAUTHORIZED"); //❌
   
   if (datasetSlug && branch) {
     const dataset = getDatasetFromSlug(datasetSlug);
-    if (!dataset) Log.error(`Dataset ${datasetSlug} not configured`);
-    if (!dataset.branches.includes(branch)) Log.error(`Branch ${branch} of ${datasetSlug} not configured`);
+    if (!dataset)
+      return error("DATASET_NOT_CONFIGURED"); //❌
+
+    if (!dataset.branches.includes(branch)) 
+      return error("BRANCH_NOT_CONFIGURED"); //❌
+
+    if (!(isServerOwner || (dataset.is_private ? canEditDS && canEditServer : canEditServer)))
+      return error("DATASET_UNAUTHORIZED"); //❌
+
+    syncStatus.ongoing = true;
     syncOneDataset(dataset, branch).finally(done);
   }
   else if (datasetSlug) {
     const dataset = getDatasetFromSlug(datasetSlug);
-    if (!dataset) Log.error(`Dataset not configured`);
-    const promises = [];
-    for (const branch of dataset.branches)
-      promises.push(syncOneDataset(dataset, branch));
-    Promise.all(promises).finally(done);
+
+    if (!dataset)
+      return error("DATASET_NOT_CONFIGURED"); //❌
+
+    if (!(isServerOwner || (dataset.is_private ? canEditDS && canEditServer : canEditServer)))
+      return error("DATASET_UNAUTHORIZED"); //❌
+
+    syncStatus.ongoing = true;
+    syncAllBranches(dataset).finally(done);
   } else {
-    syncAllDatasets().finally(done);
+    const dclFiltered = datasetControlList.filter(ds => {
+      const canEditDS = checkDatasetAccess(user, ds.slug, "editor");
+      return isServerOwner || (ds.is_private ? canEditDS && canEditServer : canEditServer);
+    })
+    if (!dclFiltered.length)
+      return error("SYNC_UNAUTHORIZED"); //❌
+
+    syncStatus.ongoing = true;
+    syncAllDatasets(dclFiltered).finally(done);
   }
-  return syncStatus;
+  return {status: 200, success: syncStatus};
 }
 
 async function prepBigSyncOrLoad(){
-  await updateDatasetControlList();
-  const allslugs = datasetControlList.length > 0 ? datasetControlList.map(m => m.slug).join(", ") : "";
-  if(datasetControlList.length)
-    Log.info(`Got info about ${datasetControlList.length} datasets: ${allslugs}`);
-  else
-    throw new Error(`\x1b[31m 💀 🟥 SERVER CRASHED BECAUSE OF MISSING DATASET CONTROL LIST 🟥`);
-  
+  const allslugs = await updateDatasetControlList();  
+
   await updateAccessControl();
 
   cleanupAllDirectories(rootPath, datasetControlList);
+
   return allslugs;
 }
 
@@ -109,11 +151,22 @@ export async function loadAllDatasets() {
   return "Success";
 }
 
-async function syncAllDatasets(){
+async function syncAllBranches(dataset){
+  for (const branch of dataset.branches)
+    await syncOneDataset(dataset, branch);
+
+  updateSyncStatus(`
+  🟢 Sync complete for ${dataset.branches.join(", ")} branches of dataset: ${dataset.slug}
+
+  `);
+  return "Success";
+}
+
+async function syncAllDatasets(dcl = datasetControlList){
   updateSyncStatus("👉 Received a request to sync ALL datasets", true);
   const allslugs = await prepBigSyncOrLoad();
 
-  for (const dataset of datasetControlList)
+  for (const dataset of dcl)
     for (const branch of dataset.branches)
       await syncOneDataset(dataset, branch);
 
