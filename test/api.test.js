@@ -5,11 +5,14 @@ import {app, server} from '../index.js';
 const expect = chai.expect;
 
 //Get latest commits
-const response = await request(app.callback()).get('/status');
-const status = JSON.parse(response.text);
+const statusResponse = await request(app.callback()).get('/status');
+const status = JSON.parse(statusResponse.text);
 
-const dummyMasterLatestFullCommit = status.availableDatasets["_dummy"].master;
-const dummyPrivateMainLatestFullCommit = status.availableDatasets["_dummy-private"].main;
+const infoResponse = await request(app.callback()).get('/info');
+const info = JSON.parse(infoResponse.text);
+
+const dummyMasterLatestFullCommit = info.datasetBranchCommitMapping["_dummy"].master;
+const dummyPrivateMainLatestFullCommit = info.datasetBranchCommitMapping["_dummy-private"].main;
 const dummyMasterLatestCommit = dummyMasterLatestFullCommit.substr(0,7);
 const dummyPrivateMainLatestCommit = dummyPrivateMainLatestFullCommit.substr(0,7);
 
@@ -20,23 +23,10 @@ after(done => {
 
 describe('API Routes: STATUS', () => {
     it('Status has server info', async () => {
-        expect(status).to.have.nested.property('server.type', 'small-waffle');
+        expect(status).to.have.nested.property('type', 'small-waffle');
     });
     it('Status has reader info', async () => {
-        expect(status).to.have.nested.property('server.DDFCSVReaderVersionInfo.package.name', "@vizabi/reader-ddfcsv");
-    });
-    it('Status has _dummy as one of the datasetControlList', async () => {
-        expect(status.datasetControlList).to.deep.include({
-            slug: "_dummy",
-            githubRepoId: "vizabi/ddf--test--companies",
-            branches: ["master", "develop"],
-            default_branch: "master",
-            is_private: false,
-            waffleFetcherAppInstallationId: null
-        });
-    });
-    it('Status has _dummy as one of the availableDatasets', async () => {
-        expect(status.availableDatasets).to.have.nested.property("_dummy.master", dummyMasterLatestFullCommit);
+        expect(status).to.have.nested.property('DDFCSVReaderVersionInfo.package.name', "@vizabi/reader-ddfcsv");
     });
 });
 
@@ -49,11 +39,24 @@ describe('API Routes: SYNC', () => {
     });
 });
 
+
 describe('API Routes: INFO', () => {
-    it('NO_DATASET_GIVEN', async () => {
+    it('Info has _dummy as one of the datasetControlList', async () => {
         const response = await request(app.callback()).get('/info');
-        expect(response.status).to.equal(400);
-        expect(response.text).to.include("Received a request with no dataset provided");
+        const info = JSON.parse(response.text);
+        expect(info.datasetControlList).to.deep.include({
+            slug: "_dummy",
+            githubRepoId: "vizabi/ddf--test--companies",
+            branches: ["master", "develop"],
+            default_branch: "master",
+            is_private: false,
+            waffleFetcherAppInstallationId: null
+        });
+    });
+    it('Info has _dummy in datasetBranchCommitMapping', async () => {
+        const response = await request(app.callback()).get('/info');
+        const info = JSON.parse(response.text);
+        expect(info.datasetBranchCommitMapping).to.have.nested.property("_dummy.master", dummyMasterLatestFullCommit);
     });
     it('DATASET_NOT_CONFIGURED', async () => {
         const response = await request(app.callback()).get('/info/webui');

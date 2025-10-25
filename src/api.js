@@ -1,7 +1,6 @@
 import Urlon from "urlon";
 import * as path from 'path';
 import {
-  datasetBranchCommitMapping,
   datasetVersionReaderInstances,
   syncStatus,
   syncDatasetsIfNotAlreadySyncing,
@@ -14,6 +13,8 @@ import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
 import { datasetControlList } from "./datasetControl.js";
+import { accessControlListLookup, permalinkAccessControlListLookup, updateAccessControl } from "./accessControl.js";
+import { getInfoAboutAllDatasets } from "./api-getinfo-allds.js";
 
 import Log from "./logger.js"
 
@@ -54,48 +55,31 @@ export default function initRoutes(api) {
   /*
   * Check server status, allowed and available datasets
   */
-  api.get("/status/:dataset([-a-z_0-9]+)?", async (ctx, next) => {   
+  api.get("/status", async (ctx, next) => {       
 
-    let datasetSlug = ctx.params.dataset;
-    if (!datasetSlug) {
-      Log.debug("Received a general status request");
+    Log.debug("Received a general status request");
 
-      const {heapTotal, heapUsed} = process.memoryUsage();
-      const {heap_size_limit} = getHeapStatistics();
-      const toMB = (b) => Math.round(b/1024/1024);
-      const memory = {
-        limit_MB: toMB(heap_size_limit),
-        heapTotal_MB: toMB(heapTotal),
-        heapUsed_MB: toMB(heapUsed),
-        heapTotal_PCT:Math.round(heapTotal/heap_size_limit * 100),
-        heapUsed_PCT: Math.round(heapUsed/heap_size_limit * 100)
-      }
-
-      ctx.status = 200; 
-      ctx.body = JSON.stringify({
-        server: {
-          type: "small-waffle",
-          uptime_ms: (new Date()).valueOf() - liveSince,
-          liveSince,
-          memory,
-          smallWaffleVersion: process.env.npm_package_version,
-          DDFCSVReaderVersion: DDFCsvReader.version,
-          DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo
-        },
-        datasetControlList,
-        availableDatasets: Object.keys(datasetBranchCommitMapping).length ? datasetBranchCommitMapping : "No datasets on the server"
-      })
-    } else {
-      Log.debug(`Received a status requests for ${datasetSlug}`);
-
-      const bcm = datasetBranchCommitMapping[datasetSlug];
-      if (bcm){
-        ctx.status = 200; 
-        ctx.body = bcm;
-      } else {
-        ctx.throw(404, `Dataset not found: ${datasetSlug}`)
-      }
+    const {heapTotal, heapUsed} = process.memoryUsage();
+    const {heap_size_limit} = getHeapStatistics();
+    const toMB = (b) => Math.round(b/1024/1024);
+    const memory = {
+      limit_MB: toMB(heap_size_limit),
+      heapTotal_MB: toMB(heapTotal),
+      heapUsed_MB: toMB(heapUsed),
+      heapTotal_PCT:Math.round(heapTotal/heap_size_limit * 100),
+      heapUsed_PCT: Math.round(heapUsed/heap_size_limit * 100)
     }
+
+    ctx.status = 200; 
+    ctx.body = JSON.stringify({
+      type: "small-waffle",
+      uptime_ms: (new Date()).valueOf() - liveSince,
+      liveSince,
+      memory,
+      smallWaffleVersion: process.env.npm_package_version,
+      DDFCSVReaderVersion: DDFCsvReader.version,
+      DDFCSVReaderVersionInfo: DDFCsvReader.versionInfo
+    })
   });
   
   /*
@@ -118,6 +102,22 @@ export default function initRoutes(api) {
     ctx.body = syncStatus;
   });
 
+
+  /*
+  * Sync only access control
+  */
+  api.get("/synconly", async (ctx, next) => {
+    const {accessControlListLookup: aclL, permalinkAccessControlListLookup: paclL} = await updateAccessControl();
+    ctx.status = 200; 
+    ctx.body = JSON.stringify({
+      oldUserRuleNumber: accessControlListLookup.size,
+      oldPermalinkRuleNumber: permalinkAccessControlListLookup.size,
+      newUserRuleNumber: aclL.size,
+      newPermalinkRuleNumber: paclL.size
+    });
+  });
+  
+
   /*
   * Get dataset info
   */
@@ -129,37 +129,48 @@ export default function initRoutes(api) {
     const referer = ctx.request.headers['referer']; 
     const user = ctx.state.user;
     const permalinkToken = ctx.get('x-share-token');
-    
-    Log.debug(`Received an info request for ${datasetSlug}/${branch}/${commit}`);
 
-    const {status, error, redirect, success, cacheControl} = await redirectLogic({
-      params: ctx.params, 
-      queryString: ctx.queryString, 
-      type: "info",
-      referer,
-      user,
-      permalinkToken,
-      redirectPrefix: `/info/${datasetSlug}/`,
-      callback: async ({success, error})=>{
-        
-        const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
-        if (!readerInstance) 
-          return error("NO_READER_INSTANCE");
+    if(!datasetSlug){
+      Log.debug(`Received an info request for all datasets`);
+
+      const info = getInfoAboutAllDatasets({user});
+      ctx.status = 200;
+      ctx.set('Cache-Control', "no-store, max-age=0");
+      ctx.body = JSON.stringify(info);
+
+    } else {
       
-        try {
-          const data = await readerInstance.getDatasetInfo();
-          return success(data);
-        } catch (err) {
-          return error(err);
-        }        
-      }
-    });
+      Log.debug(`Received an info request for ${datasetSlug}/${branch}/${commit}`);
 
-    ctx.status = status;
-    ctx.set('Cache-Control', cacheControl);
-    if (error) ctx.throw(status, error);
-    if (redirect) ctx.redirect(redirect);
-    if (success) ctx.body = success;
+      const {status, error, redirect, success} = await redirectLogic({
+        params: ctx.params, 
+        queryString: ctx.queryString, 
+        type: "info",
+        referer,
+        user,
+        permalinkToken,
+        redirectPrefix: `/info/${datasetSlug}/`,
+        callback: async ({success, error})=>{
+          
+          const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
+          if (!readerInstance) 
+            return error("NO_READER_INSTANCE");
+        
+          try {
+            const data = await readerInstance.getDatasetInfo();
+            return success(data);
+          } catch (err) {
+            return error(err);
+          }        
+        }
+      });
+
+      ctx.status = status;
+      ctx.set('Cache-Control', "no-store, max-age=0");
+      if (error) ctx.throw(status, error);
+      if (redirect) ctx.redirect(redirect);
+      if (success) ctx.body = success;
+    }
   });
 
   /*

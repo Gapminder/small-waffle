@@ -9,7 +9,7 @@ import {
   cleanupAllDirectories
 } from "./updateFilesOnDisk.js";
 import { updateDatasetControlList, datasetControlList } from "./datasetControl.js";
-import { updateAccessControlList, accessControlListCache } from "./accessControl.js";
+import { updateAccessControl } from "./accessControl.js";
 import Log from "./logger.js"
 
 const rootPath = path.resolve("./datasets/");
@@ -87,11 +87,7 @@ async function prepBigSyncOrLoad(){
   else
     throw new Error(`\x1b[31m 💀 🟥 SERVER CRASHED BECAUSE OF MISSING DATASET CONTROL LIST 🟥`);
   
-  await updateAccessControlList();
-  if(accessControlListCache.length)
-    Log.info(`Got info about ${accessControlListCache.length} access rules`);
-  else
-    throw new Error(`\x1b[31m 💀 🟥 SERVER CRASHED BECAUSE OF MISSING ACCESS CONTROL LIST 🟥`);
+  await updateAccessControl();
 
   cleanupAllDirectories(rootPath, datasetControlList);
   return allslugs;

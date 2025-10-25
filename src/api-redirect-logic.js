@@ -5,23 +5,21 @@ import {
     getDefaultBranch
   } from "./datasetManagement.js";
 
-import { accessControlListCache, permalinkAccessControlListCache } from "./accessControl.js";
+import { checkAccess } from "./accessControl.js";
 import { recordEvent } from "./event-analytics.js";
 import errors from "./api-errors.js";
 
-export default async function redirectLogic({params, queryString, type, referer="", user = "", permalinkToken = "", redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
+const CACHECONTROL_FOR_ERROR = "no-store, max-age=0";
+const CACHECONTROL_FOR_REDIRECT = "public, s-maxage=300, max-age=300";
+const CACHECONTROL_FOR_SUCCESS = "public, s-maxage=31536000, max-age=14400";
+
+export default async function redirectLogic({params, queryString, type, referer="", user = {}, permalinkToken = "", redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
     const {datasetSlug, branch, commit, asset} = params; 
     const eventTemplate = {type, asset, datasetSlug, branch, commit, queryString, referer};
     
     const knownErrors = errors(datasetSlug, branch, commit);
 
-    function checkAccess(user, permalinkToken, datasetSlug){
-      if ((!user || !user.sub) && !permalinkToken) return false;
-      return accessControlListCache.find(acl => acl.user_uuid === user.sub && acl.resource === datasetSlug)
-        || permalinkAccessControlListCache.find(pacl => pacl.token_hash === permalinkToken && pacl.resource === datasetSlug);
-    }
-
-    function error(err, cacheControl = "no-store, max-age=0"){
+    function error(err, cacheControl = CACHECONTROL_FOR_ERROR){
       const knownError = knownErrors[err];
 
       if (!err.stack && knownError && knownError.length === 3) {
@@ -43,11 +41,11 @@ export default async function redirectLogic({params, queryString, type, referer=
       }
     }
   
-    function redirect(target, cacheControl = "public, s-maxage=300, max-age=300") {
+    function redirect(target, cacheControl = CACHECONTROL_FOR_REDIRECT) {
       return {status: 302, redirect: `${target}${queryString?"?"+queryString:""}`, cacheControl};
     }
   
-    function success(data, cacheControl = "public, s-maxage=31536000, max-age=14400"){
+    function success(data, cacheControl = CACHECONTROL_FOR_SUCCESS){
       return {status: 200, success: data, cacheControl};
     }
     
@@ -61,7 +59,12 @@ export default async function redirectLogic({params, queryString, type, referer=
     if (!branchCommitMapping) 
       return error("DATASET_NOT_FOUND");
 
-    if (getDatasetFromSlug(datasetSlug)?.is_private && !checkAccess(user, permalinkToken, datasetSlug))
+    if (getDatasetFromSlug(datasetSlug)?.is_private && !checkAccess({
+        user_uuid: user?.sub,
+        token_hash: permalinkToken,
+        resource: datasetSlug,
+        minimumNeededLevel: "reader"
+      }))
       return error("DATASET_UNAUTHORIZED");
 
     const validationError = getValidationError && getValidationError();
