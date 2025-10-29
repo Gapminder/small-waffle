@@ -44,9 +44,25 @@ describe('API Routes: STATUS', () => {
 
 
 describe('API Routes: SYNC', () => {
-  it('Sync one dataset _dummy', async () => {
-    const response = await request(app.callback()).get("/sync/_dummy");
+  it('Sync dataset but not logged in', async () => {
     const {status, shortMessage} = getError("SYNC_UNAUTHORIZED", "_dummy");
+    const response = await request(app.callback()).get("/sync/_dummy");
+    expect(response.status).to.equal(status);
+    expect(response.text).to.include(shortMessage);
+  });
+  it('Sync dataset with unknown dataset', async () => {
+    const {status, shortMessage} = getError("DATASET_NOT_CONFIGURED", "unknownsomething");
+    const response = await request(app.callback()).get("/sync/unknownsomething")
+      .set('x-test-user-sub', fakeUserEditor.sub)
+      .set('x-test-user-email', fakeUserEditor.email);
+    expect(response.status).to.equal(status);
+    expect(response.text).to.include(shortMessage);
+  });
+  it('Sync dataset with unknown branch', async () => {
+    const {status, shortMessage} = getError("BRANCH_NOT_CONFIGURED", "_dummy", "unknownsomething");
+    const response = await request(app.callback()).get("/sync/_dummy/unknownsomething")
+      .set('x-test-user-sub', fakeUserEditor.sub)
+      .set('x-test-user-email', fakeUserEditor.email);
     expect(response.status).to.equal(status);
     expect(response.text).to.include(shortMessage);
   });
