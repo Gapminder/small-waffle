@@ -6,3 +6,5 @@ events
 backup
 .env
 *.pem
+
+.psc-ide-port

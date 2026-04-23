@@ -4,7 +4,10 @@ import {
   datasetVersionReaderInstances,
   syncStatus,
   syncDatasetsIfNotAlreadySyncing,
-  getDatasetFromSlug
+  validateDatasetIfNotBusy,
+  validationResults,
+  getDatasetFromSlug,
+  getDefaultBranch
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
@@ -96,8 +99,9 @@ export default function initRoutes(api) {
     const branch = ctx.params.branch;
     const user = ctx.state.user;
     const referer = ctx.request.headers['referer']; 
+    const skipValidation = ctx.query.skipValidation === "true";
 
-    const {status, success, error} = syncDatasetsIfNotAlreadySyncing(datasetSlug, branch, user, referer);
+    const {status, success, error} = syncDatasetsIfNotAlreadySyncing(datasetSlug, branch, user, referer, skipValidation);
     
     ctx.status = status;
     ctx.set('Cache-Control', "no-store, max-age=0");
@@ -106,12 +110,66 @@ export default function initRoutes(api) {
   });
 
   /*
-  * Check sync progress
+  * Check sync/validate progress (unified)
+  */
+  api.get("/progress", async (ctx, next) => {
+    ctx.set('Cache-Control', "no-store, max-age=0");
+    ctx.status = 200; 
+    ctx.body = syncStatus;
+  });
+
+  /*
+  * Backward-compatible alias
   */
   api.get("/syncprogress", async (ctx, next) => {
     ctx.set('Cache-Control', "no-store, max-age=0");
     ctx.status = 200; 
     ctx.body = syncStatus;
+  });
+
+  /*
+  * Validate a dataset (run validation without a git pull)
+  */
+  api.get("/validate/:datasetSlug([-a-z_0-9]+)/:branch([-a-z_0-9]+)?", async (ctx, next) => {
+    const datasetSlug = ctx.params.datasetSlug;
+    const branch = ctx.params.branch;
+    const user = ctx.state.user;
+
+    const {status, success, error} = validateDatasetIfNotBusy(datasetSlug, branch, user);
+
+    ctx.status = status;
+    ctx.set('Cache-Control', "no-store, max-age=0");
+    if (error) ctx.throw(status, error);
+    if (success) ctx.body = success;
+  });
+
+  /*
+  * Retrieve the latest stored validation result for a dataset/branch
+  */
+  api.get("/isvalid/:datasetSlug([-a-z_0-9]+)/:branch([-a-z_0-9]+)?", async (ctx, next) => {
+    const datasetSlug = ctx.params.datasetSlug;
+    const user = ctx.state.user;
+
+    const canEdit = checkServerAccess(user, "editor");
+    if (!canEdit) {
+      ctx.set('Cache-Control', "no-store, max-age=0");
+      ctx.throw(401, "Unauthorized");
+      return;
+    }
+
+    const dataset = getDatasetFromSlug(datasetSlug);
+    if (!dataset) {
+      ctx.set('Cache-Control', "no-store, max-age=0");
+      ctx.throw(403, `Dataset not configured: ${datasetSlug}`);
+      return;
+    }
+
+    const branch = ctx.params.branch || getDefaultBranch(datasetSlug);
+    const result = validationResults[`${datasetSlug}:${branch}`];
+
+    ctx.set('Cache-Control', "no-store, max-age=0");
+    ctx.status = 200;
+    ctx.body = result ?? {validated: false, slug: datasetSlug, branch};
   });
 
 

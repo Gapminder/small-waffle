@@ -1,6 +1,7 @@
 // git-worker/index.js
 import nodeHttp from 'node:http';
-import Log from "./src/logger.js"; 
+import Log from "./src/logger.js";
+import { validate } from "@gapminder/validate-ddf";
 import dotenv from 'dotenv';
 import { getGithubAuthHandler } from './src/githubAppConnection.js';
 import fs from 'fs';
@@ -41,27 +42,52 @@ async function tick() {
   next.updatedAt = Date.now();
 
   try {
-    const { dir, branch, url, action, waffleFetcherAppInstallationId, latestCommit} = next.payload;
-    
-    next.progress = {phase: "Authenticating..."};
-    const onAuth = getGithubAuthHandler(waffleFetcherAppInstallationId); 
-    const onProgress = ({phase, loaded, total} = {}) => {
-      next.progress = {phase, loaded, total}
-    };
+    const { dir, branch, url, action, waffleFetcherAppInstallationId, latestCommit, skipValidation } = next.payload;
 
-    if (action === "clone"){
-      await git.clone({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, prune: true, force: true, onProgress, onAuth, url });
-    }
-    if (action === "fetch"){
-      next.progress = {phase: "Fetching..."};
-      await git.fetch({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, noTags: true, onProgress, onAuth });
-    
-      next.progress = {phase: "Checking out the latest commit..."};
-      await git.checkout({ fs, dir, ref: latestCommit, force: true });
+    // Git operations — skipped for validate-only jobs
+    if (action !== "validate") {
+      next.progress = {phase: "Authenticating..."};
+      const onAuth = getGithubAuthHandler(waffleFetcherAppInstallationId);
+      const onProgress = ({phase, loaded, total} = {}) => {
+        next.progress = {phase, loaded, total};
+      };
+
+      if (action === "clone") {
+        await git.clone({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, prune: true, force: true, onProgress, onAuth, url });
+      }
+      if (action === "fetch") {
+        next.progress = {phase: "Fetching..."};
+        await git.fetch({ fs, http, dir, ref: branch, singleBranch: true, depth: 1, noTags: true, onProgress, onAuth });
+
+        next.progress = {phase: "Checking out the latest commit..."};
+        await git.checkout({ fs, dir, ref: latestCommit, force: true });
+      }
     }
 
-    next.progress = {phase: "Job done"};
-    next.state = 'done';
+    // Validation stage — runs for all actions unless explicitly skipped
+    if (!skipValidation) {
+      next.progress = { phase: "Validating dataset..." };
+      const validationResult = await validate(dir, {
+        onlyErrors: false,
+        generateDP: false,
+        onProgress: (msg) => { next.progress = { phase: msg }; },
+      });
+      next.validationResult = validationResult;
+
+      if (validationResult.success) {
+        const warnCount = validationResult.errors?.length ?? 0;
+        next.progress = { phase: warnCount > 0 ? `Validation complete (${warnCount} warning(s))` : "Validation successful" };
+        next.state = 'done';
+      } else {
+        const errorCount = validationResult.errors?.length ?? 0;
+        next.error = `Validation failed with ${errorCount} error(s)`;
+        next.progress = { phase: `Validation failed (${errorCount} error(s))` };
+        next.state = 'error';
+      }
+    } else {
+      next.progress = { phase: "Done (validation skipped)" };
+      next.state = 'done';
+    }
   } catch (e) {
     Log.error(e)
     next.tries = (next.tries || 0) + 1;

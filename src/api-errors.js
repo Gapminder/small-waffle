@@ -55,5 +55,15 @@ export default function errors(datasetSlug, branch, commit) {
       `No asset provided in the route`,
       `Please specify an asset like https://waffle-endpoint.com/sg-master/assets/world-50m.json`
     ],
+    VALIDATE_UNAUTHORIZED: [
+      401,
+      `User doesn't have access to validate datasets or needs to login`,
+      `Log in, make sure you have permission rights and those are synced with the server: https://waffle-endpoint.com/synconly/acl`
+    ],
+    VALIDATE_NO_SLUG: [
+      400,
+      `Received a validate request with no dataset provided`,
+      `Please specify a dataset like https://waffle-endpoint.com/validate/fasttrack`
+    ],
   }
 }
