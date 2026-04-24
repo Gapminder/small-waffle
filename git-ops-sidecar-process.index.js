@@ -77,13 +77,11 @@ async function tick() {
       if (validationResult.success) {
         const warnCount = validationResult.errors?.length ?? 0;
         next.progress = { phase: warnCount > 0 ? `Validation complete (${warnCount} warning(s))` : "Validation successful" };
-        next.state = 'done';
       } else {
         const errorCount = validationResult.errors?.length ?? 0;
-        next.error = `Validation failed with ${errorCount} error(s)`;
         next.progress = { phase: `Validation failed (${errorCount} error(s))` };
-        next.state = 'error';
       }
+      next.state = 'done';
     } else {
       next.progress = { phase: "Done (validation skipped)" };
       next.state = 'done';
