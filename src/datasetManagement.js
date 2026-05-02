@@ -58,7 +58,7 @@ export function updateSyncStatus(comment, addnew) {
   Log.info(comment);
 }
 
-export /*SYNC!*/ function syncDatasetsIfNotAlreadySyncing(datasetSlug, branch, user, referer, skipValidation = false) {
+export /*SYNC!*/ function syncDatasetsIfNotAlreadySyncing(datasetSlug, branch, user, referer, skipValidation = true) {
   if (syncStatus.ongoing) return {status: 200, success: syncStatus};
 
   syncStatus.events = [];
@@ -156,7 +156,7 @@ export async function loadAllDatasets() {
   return "Success";
 }
 
-async function syncAllBranches(dataset, skipValidation = false) {
+async function syncAllBranches(dataset, skipValidation = true) {
   for (const branch of dataset.branches)
     await syncOneDataset(dataset, branch, skipValidation);
 
@@ -167,7 +167,7 @@ async function syncAllBranches(dataset, skipValidation = false) {
   return "Success";
 }
 
-async function syncAllDatasets(dcl = datasetControlList, skipValidation = false) {
+async function syncAllDatasets(dcl = datasetControlList, skipValidation = true) {
   updateSyncStatus("👉 Received a request to sync ALL datasets", true);
   const allslugs = await prepBigSyncOrLoad();
 
@@ -195,7 +195,7 @@ async function loadOneDataset(dataset, branch) {
   }
 }
 
-async function syncOneDataset(dataset, branch, skipValidation = false) {
+async function syncOneDataset(dataset, branch, skipValidation = true) {
   updateSyncStatus(`
   🔄 ${dataset.slug} ᛘ ${dataset.githubRepoId} ⼘ ${branch}`);
   
