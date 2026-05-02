@@ -215,6 +215,7 @@ async function syncOneDataset(dataset, branch, skipValidation = false) {
         branch,
         success: validationResult.success ?? null,
         errors: validationResult.errors ?? null,
+        validatorVersion: validationResult.validatorVersion ?? null,
       };
     }
 
@@ -288,6 +289,7 @@ async function runValidationForDataset(dataset, branch) {
       branch,
       success: validationResult?.success ?? null,
       errors: validationResult?.errors ?? null,
+      validatorVersion: validationResult?.validatorVersion ?? null,
     };
     const msg = validationResult?.success
       ? `[${dataset.slug}:${branch}] ✓ Validation successful${warnCount > 0 ? ` (${warnCount} warning(s))` : ''}`
