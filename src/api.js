@@ -39,7 +39,7 @@ export default function initRoutes(api) {
   /*
   * Backup events
   */
-  api.get("/backupevents/:filename([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/backupevents{/:filename}", async (ctx, next) => {
     Log.debug("Received a request to backup events");
     let filename = ctx.params.filename || "manual-backup";
     ctx.set('Cache-Control', "no-store, max-age=0");
@@ -93,7 +93,7 @@ export default function initRoutes(api) {
   /*
   * Sync the dataset metadata and files between disk, memory and GitHub
   */
-  api.get("/sync/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/sync{/:datasetSlug}{/:branch}", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -130,7 +130,7 @@ export default function initRoutes(api) {
   /*
   * Validate a dataset (run validation without a git pull)
   */
-  api.get("/validate/:datasetSlug([-a-z_0-9]+)/:branch([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/validate/:datasetSlug{/:branch}", async (ctx, next) => {
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
     const user = ctx.state.user;
@@ -146,7 +146,7 @@ export default function initRoutes(api) {
   /*
   * Retrieve the latest stored validation result for a dataset/branch
   */
-  api.get("/isvalid/:datasetSlug([-a-z_0-9]+)/:branch([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/isvalid/:datasetSlug{/:branch}", async (ctx, next) => {
     const datasetSlug = ctx.params.datasetSlug;
     const user = ctx.state.user;
 
@@ -235,7 +235,7 @@ export default function initRoutes(api) {
   /*
   * Get dataset info
   */
-  api.get("/info/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/info{/:datasetSlug}{/:branch}{/:commit}", async (ctx, next) => {
     
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -290,7 +290,7 @@ export default function initRoutes(api) {
   /*
   * Get assets
   */
-  api.get("/v2/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?/assets/:asset([-a-z_0-9.]+)?", async (ctx, next) => {
+  api.get("/v2{/:datasetSlug}{/:branch}{/:commit}/assets{/:asset}", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -336,7 +336,7 @@ export default function initRoutes(api) {
   /*
   * Get data
   */  
-  api.get("/v2/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("/v2{/:datasetSlug}{/:branch}{/:commit}", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -425,7 +425,7 @@ export default function initRoutes(api) {
   /*
   * OLD API - DEPRECATED V1 API, TO BE DELETED IN V3
   */  
-  api.get("/:datasetSlug([-a-z_0-9]+)?/:branch([-a-z_0-9]+)?/:commit([-a-z_0-9]+)?", async (ctx, next) => {
+  api.get("{/:datasetSlug}{/:branch}{/:commit}", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -509,7 +509,7 @@ export default function initRoutes(api) {
 
 
 
-  api.get("/:possiblyAssetFolder([-a-z_0-9]+)?/(.*)", async (ctx, next) => {
+  api.get("{/:possiblyAssetFolder}/*rest", async (ctx, next) => {
     const possiblyAssetFolder = ctx.params.possiblyAssetFolder;
 
     const folders = new Set(datasetControlList.map(item => item.githubRepoId.split('/')[0]));
