@@ -1,6 +1,6 @@
 {
   "name": "small-waffle",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",
@@ -10,7 +10,7 @@
     "start": "concurrently -k -n API,GITOPS -c green,cyan \"npm:start:api\" \"npm:start:sidecar\"",
     "serve": "pm2 start pm2.config.cjs",
     "test": "export PORT=4444 && export VERBOSITY=0 && export EVENTFILENAME=test && export NODE_ENV=test && mocha --timeout 2000 --exit",
-    "build": "echo 'No build step required for serverless functions'"
+    "build": "echo 'There is no build, use `npm start` on dev, `npm test` to test, `npm run serve` in prod'"
   },
   "author": "",
   "license": "ISC",
@@ -18,7 +18,7 @@
     "@gapminder/validate-ddf": "2.4.0",
     "@koa/cors": "^5.0.0",
     "@octokit/auth-app": "^8.2.0",
-    "@vizabi/reader-ddfcsv": "4.6.0",
+    "@vizabi/reader-ddfcsv": "4.6.1",
     "crypto": "^1.0.1",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.4.2",
