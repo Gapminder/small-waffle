@@ -1,6 +1,6 @@
 {
   "name": "small-waffle",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",
@@ -15,12 +15,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@gapminder/validate-ddf": "2.4.0",
+    "@gapminder/validate-ddf": "2.4.1",
     "@koa/cors": "^5.0.0",
     "@octokit/auth-app": "^8.2.0",
     "@vizabi/reader-ddfcsv": "4.6.1",
     "crypto": "^1.0.1",
-    "csv-parser": "^3.2.0",
+    "csv-parser": "^3.2.1",
     "dotenv": "^17.4.2",
     "isomorphic-git": "^1.37.6",
     "koa": "^3.2.0",
