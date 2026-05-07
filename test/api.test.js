@@ -97,6 +97,15 @@ describe('API Routes: INFO', () => {
     it('Info has _dummy in BCM', async () => {
         expect(info.datasetBranchCommitMapping).to.have.nested.property("_dummy.master", dummyMasterLatestFullCommit);
     });
+    it('Info has commitTimeStamp for _dummy branches as ISO timestamps', async () => {
+        const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+        expect(info.commitTimeStamp).to.have.nested.property("_dummy.master").that.matches(isoRegex);
+        expect(info.commitTimeStamp).to.have.nested.property("_dummy.develop").that.matches(isoRegex);
+    });
+    it('Info has commitAuthor for _dummy branches as non-empty strings', async () => {
+        expect(info.commitAuthor).to.have.nested.property("_dummy.master").that.is.a('string').and.not.empty;
+        expect(info.commitAuthor).to.have.nested.property("_dummy.develop").that.is.a('string').and.not.empty;
+    });
     it('DATASET_NOT_CONFIGURED', async () => {
         const response = await request(app.callback()).get('/info/webui');
         expect(response.status).to.equal(403);

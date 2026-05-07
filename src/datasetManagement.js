@@ -2,6 +2,7 @@ import * as path from 'path';
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import {resultTransformer} from "./resultTransformer.js";
 import {requestLatestCommitHash} from "./getRepoBranchCommitMapping.js";
+import {getCommitInfo} from "./getRepoCommitInfo.js";
 import {
   getCurrentCommit, 
   ensurePathExistsAndRepoIsCloned,
@@ -20,6 +21,8 @@ const rootPath = path.resolve("./datasets/");
 
 export const datasetVersionReaderInstances = {};
 export const datasetBranchCommitMapping = {};
+export const datasetBranchCommitTimestamp = {};
+export const datasetBranchCommitAuthor = {};
 export const syncStatus = {ongoing: false, events: [], operation: null};
 export const validationResults = {}; // { "slug:branch": { timestamp, slug, branch, success, errors } }
 
@@ -235,7 +238,11 @@ async function loadReaderInstance(dataset, branch) {
   (datasetVersionReaderInstances[dataset.slug] ??= {})[branch] = readerInstance; //create subobject if missing
 
   const currentCommit = await getCurrentCommit(rootPath, dataset, branch);
-  (datasetBranchCommitMapping[dataset.slug] ??= {}) [branch] = currentCommit; //create subobject if missing
+  (datasetBranchCommitMapping[dataset.slug] ??= {})[branch] = currentCommit; //create subobject if missing
+
+  const commitInfo = await getCommitInfo(rootPath, dataset, branch, currentCommit).catch(() => null);
+  (datasetBranchCommitTimestamp[dataset.slug] ??= {})[branch] = commitInfo?.commitTimeStamp ?? null;
+  (datasetBranchCommitAuthor[dataset.slug] ??= {})[branch] = commitInfo?.commitAuthor ?? null;
 
   Log.info(`[${dataset.slug}:${branch}] Created a reader instance with commit ${currentCommit.substring(0, 7)}`)
 }
