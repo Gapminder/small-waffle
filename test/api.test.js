@@ -383,4 +383,11 @@ describe('API Routes: DATA (v3)', () => {
         expect(response.status).to.equal(500);
         expect(response.text).to.include('Internal Server Error');
     });
+    it('Deprecated V1 API returns Route not found', async function() {
+        this.timeout(5000);
+        const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
+        const response = await request(app.callback()).get(`/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        expect(response.status).to.equal(404);
+        expect(response.text).to.include("Route not found");
+    });
 });
