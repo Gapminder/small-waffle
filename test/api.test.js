@@ -362,6 +362,16 @@ describe('API Routes: DATA', () => {
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Too many query definition errors");
     });
+    it('DDFCSV ddf-query-validator error - boolean operator $nor given as object, not array', async () => {
+        // Without the '@' array sigil, Urlon parses $nor as an object instead of an array.
+        // This used to crash the server with "filter[field].map is not a function" → HTTP 500.
+        // Fixed in ddf-query-validator >=1.4.5: validateWhereStructure rejects non-array boolean operators.
+        const query = `_select_key@=company&=year;&value@=lines/_of/_code;;&from=datapoints&where_$nor_company_$in@=gap`;
+        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        expect(response.status).to.equal(400);
+        expect(response.text).to.include("Too many query structure errors");
+        expect(response.text).to.include("operator '$nor' must be an array");
+    });
     it('Deliberate crash to create a 500 error', async () => {
         const query = `_test500error:true&select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`;
         const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
