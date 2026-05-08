@@ -1,12 +1,22 @@
-// Importing the crypto module with ES6 syntax
 import crypto from 'crypto';
+import Database from 'better-sqlite3';
 import Log from "./logger.js";
 import {promises as fs, existsSync, mkdirSync} from 'fs';
 import path from 'path';
 import cron from 'node-cron';
-let requestMap = new Map();
 
-// Function to create an MD5 hash
+const backupFilePath = path.resolve("./events/");
+
+// Use in-memory DB for the test environment; otherwise a persistent file.
+const dbName = process.env.EVENTFILENAME ?? "events";
+const isTestEnv = dbName === "test";
+const dbFilePath = isTestEnv ? ":memory:" : path.join(backupFilePath, `${dbName}.db`);
+
+let db = null;
+let stmtUpsert = null;
+let stmtGet = null;
+let stmtAll = null;
+
 function createMD5Hash(input) {
     const hash = crypto.createHash('md5');
     hash.update(input);
@@ -34,7 +44,6 @@ function timingText(timing){
 function getLogLevel(status, newEvent){
     if (!status || status === 200 || status === 302)
         return newEvent ? "info" : "debug";
-    
     return newEvent ? "error" : "debug";
 }
 
@@ -49,83 +58,109 @@ function log(params, count){
         logger(text);
 }
 
-export function recordEvent(params = {}){
+function ensurePathExists(){
+  if (!existsSync(backupFilePath)) mkdirSync(backupFilePath, { recursive: true });
+}
 
+function prepareStatements() {
+  stmtUpsert = db.prepare(`
+    INSERT INTO events
+      (hash, type, datasetSlug, branch, queryString, referer, status, comment, "commit", count, earliest_ms, latest_ms, timing, asset, stack)
+    VALUES
+      (@hash, @type, @datasetSlug, @branch, @queryString, @referer, @status, @comment, @commit, 1, @now_ms, @now_ms, @timing, @asset, @stack)
+    ON CONFLICT(hash) DO UPDATE SET
+      count      = count + 1,
+      latest_ms  = @now_ms,
+      timing     = CASE
+                     WHEN timing IS NOT NULL AND @timing IS NOT NULL
+                     THEN ROUND((timing * count + @timing) / (count + 1))
+                     ELSE timing
+                   END
+    RETURNING count
+  `);
+  stmtGet = db.prepare(`SELECT * FROM events WHERE hash = ?`);
+  stmtAll = db.prepare(`SELECT * FROM events`);
+}
+
+export function recordEvent(params = {}){
     const k = key(params);
-    const now = new Date();
-    const now_ms = now.valueOf();
-    const record = requestMap.get(k);
-    
-    if(!record) {
-        requestMap.set(k, {...params, count: 1, earliest_ms: now_ms, latest_ms: now_ms});
-        log(params, 0);
-        return 1;
-    } else {
-        //compute a cumulative average in ms
-        if (record.timing) record.timing = Math.round(((record.timing * record.count) + params.timing) / (record.count + 1));
-        record.count = record.count + 1;
-        record.latest_ms = now_ms;
-        log(params, record.count);
-        return record.count;
-    }
+    const now_ms = Date.now();
+    const {type, asset, datasetSlug, branch, queryString, referer, status, comment, commit, timing, stack} = params;
+
+    const result = stmtUpsert.get({
+        hash: k, type, asset: asset ?? null, datasetSlug, branch, queryString,
+        referer: referer ?? null, status, comment, commit: commit ?? null,
+        now_ms, timing: timing ?? null, stack: stack ?? null
+    });
+
+    const count = result.count;
+    log(params, count === 1 ? 0 : count);
+    return count;
 }
 
 export function retrieveEvents(){
-    return [...requestMap.entries()];
+    return stmtAll.all().map(({hash, ...record}) => [hash, record]);
 }
 
 export function retrieveEvent(params){
-  return requestMap.get(key(params));
-}
-
-
-const backupFilePath = path.resolve("./events/");
-let backupFileLock = false;
-
-async function ensurePathExists(){
-  if (!existsSync(backupFilePath)) mkdirSync(backupFilePath, { recursive: true });
+    const row = stmtGet.get(key(params));
+    if (!row) return undefined;
+    const {hash, ...record} = row;
+    return record;
 }
 
 export async function backupEvents({filename = "backup", timestamp = false} = {}) {
   ensurePathExists();
-  const dateFormat = () => new Date().toISOString().slice(0,19).replaceAll(":","-"); // "YYYY-MM-DDThh-mm-ss"
+  const dateFormat = () => new Date().toISOString().slice(0,19).replaceAll(":","-");
   const fileName = path.join(backupFilePath, `${filename}${timestamp ? "_" + dateFormat() : ""}.json`);
 
-  if (backupFileLock) return;
   try {
-    await fs.writeFile( fileName, JSON.stringify([...requestMap.entries()]) );
-    const status = `Event backup with ${requestMap.size} events saved successfully to ${fileName}.`;
+    const entries = stmtAll.all().map(({hash, ...record}) => [hash, record]);
+    await fs.writeFile(fileName, JSON.stringify(entries));
+    const status = `Event backup with ${entries.length} events saved successfully to ${fileName}.`;
     Log.info(status);
-    return ({status})
+    return ({status});
   } catch (error) {
     Log.error('Failed to save event backup:', error);
-    return ({status: `Failed to save event backup`})
+    return ({status: `Failed to save event backup`});
   }
 }
 
-export async function loadEventsFromFile({filename = "hourly"} = {}){
-  if (process.env.EVENTFILENAME) filename = process.env.EVENTFILENAME;
-  ensurePathExists();
-  backupFileLock = true;
-  const fileName = path.join(backupFilePath, `${filename}.json`);
-  try {
-    const data = await fs.readFile(fileName, { encoding: 'utf8' });
-    const entries = JSON.parse(data);
-    requestMap = new Map(entries);
-    backupFileLock = false;
-    Log.info(`Backup loaded successfully wtith ${requestMap.size} events`);
-  } catch (error) {
-    backupFileLock = false;
-    Log.error(`Failed to load event backup from ${fileName}`, error);
-  }
+// Called at startup. Opens/creates the SQLite DB and prepares statements.
+// In the test environment uses an in-memory DB (EVENTFILENAME=test).
+export async function loadEventsFromFile(){
+  if (!isTestEnv) ensurePathExists();
+  db = new Database(dbFilePath);
+  db.pragma('journal_mode = WAL');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS events (
+      hash        TEXT PRIMARY KEY,
+      type        TEXT,
+      datasetSlug TEXT,
+      branch      TEXT,
+      queryString TEXT,
+      referer     TEXT,
+      status      INTEGER,
+      comment     TEXT,
+      "commit"    TEXT,
+      count       INTEGER NOT NULL DEFAULT 1,
+      earliest_ms INTEGER,
+      latest_ms   INTEGER,
+      timing      REAL,
+      asset       TEXT,
+      stack       TEXT
+    )
+  `);
+  prepareStatements();
+  const count = db.prepare('SELECT COUNT(*) as n FROM events').get().n;
+  Log.info(`Database initialized with ${count} events from ${isTestEnv ? ":memory:" : dbFilePath}`);
 }
 
 export async function resetEvents() {
   const backupStatus = await backupEvents({filename: "before-reset", timestamp: true});
   let status = "";
   if (backupStatus.status.includes("success")) {
-    requestMap = new Map();
-    //erase the hourly backup as well
+    db.prepare('DELETE FROM events').run();
     await backupEvents({filename: "hourly", timestamp: false});
     status = `Successfully purged all events and erased the hourly backup file`;
   } else {

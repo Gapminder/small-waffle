@@ -1,6 +1,6 @@
 {
   "name": "small-waffle",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",
@@ -19,6 +19,7 @@
     "@koa/cors": "^5.0.0",
     "@octokit/auth-app": "^8.2.0",
     "@vizabi/reader-ddfcsv": "4.6.2",
+    "better-sqlite3": "^12.9.0",
     "crypto": "^1.0.1",
     "csv-parser": "^3.2.1",
     "dotenv": "^17.4.2",
