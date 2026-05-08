@@ -47,7 +47,7 @@ export default function initLegacyRoutes(api) {
         const assetPath = path.join("/" + dataset.githubRepoId, branch, 'assets', asset);
         const cacheControl = "public, s-maxage=31536000, max-age=14400";
 
-        recordEvent({...eventTemplate, status: 302, comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit});
+        recordEvent({...eventTemplate, status: 302, comment: "Serving asset from a resolved path", redirect: assetPath, branch, commit, event_code: "SERVING_ASSET"});
 
         return redirect(assetPath, cacheControl);
       }
@@ -111,7 +111,7 @@ export default function initLegacyRoutes(api) {
             throw "Deliberate 500 error";
 
           if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "_dummy-private" || datasetSlug == "population" || datasetSlug == "povcalnet") ) {
-            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit, query_from});
+            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit, query_from, event_code: "BOMB_QUERY_GUARD"});
             return success({
               header: ddfQuery.select.key.concat(ddfQuery.select.value),
               rows: [],
@@ -130,7 +130,7 @@ export default function initLegacyRoutes(api) {
 
           const timeEnd = new Date().valueOf();
           const timing = timeEnd - timeStart;
-          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing, query_from});
+          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing, query_from, event_code: "RESOLVED_QUERY"});
 
           return success(data);
         } catch (err) {

@@ -22,7 +22,7 @@ describe('API Routes: EVENTS', () => {
         expect(response.status).to.equal(200);
         const body = JSON.parse(response.text);
         expect(body).to.have.property('_total').with.keys('uniqueEvents', 'totalCount');
-        expect(body).to.have.all.keys('_total', 'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset', 'referer', 'api_version', 'query_from');
+        expect(body).to.have.all.keys('_total', 'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset', 'referer', 'api_version', 'query_from', 'event_code');
         expect(body.status).to.be.an('array');
         expect(body.status[0]).to.have.keys('value', 'totalCount', 'uniqueEvents');
     });

@@ -25,18 +25,18 @@ export default async function redirectLogic({params, queryString, type, referer=
       if (!err.stack && knownError && knownError.length === 3) {
         // known error
         const [status, shortMessage, messageExtra] = knownError;
-        recordEvent({...eventTemplate, status, comment: shortMessage});
+        recordEvent({...eventTemplate, status, comment: shortMessage, event_code: err});
         return {status, error: `${shortMessage} \n ${messageExtra}`, cacheControl};
 
       } else if (typeof err === "string" 
         && (err.includes("Too many query structure errors") || err.includes("Too many query definition errors"))) {        
         // hardcoded known error from ddf-query-validator inside DDFCSV reader
-        recordEvent({...eventTemplate, status: 400, comment: err});
+        recordEvent({...eventTemplate, status: 400, comment: err, event_code: "QUERY_VALIDATION_ERROR"});
         return {status: 400, error: `${err}`, cacheControl};
 
       } else {
         // unknown error
-        recordEvent({...eventTemplate, status: 500, comment: err.message ? err.message : err, stack:err.stack});
+        recordEvent({...eventTemplate, status: 500, comment: err.message ? err.message : err, stack:err.stack, event_code: "UNKNOWN_ERROR"});
         return {status: 500, error: err.message ? err.message : err, cacheControl};
       }
     }

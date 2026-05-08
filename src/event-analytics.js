@@ -65,12 +65,13 @@ function ensurePathExists(){
 function prepareStatements() {
   stmtUpsert = db.prepare(`
     INSERT INTO events
-      (hash, type, datasetSlug, branch, queryString, referer, status, comment, "commit", count, earliest_ms, latest_ms, timing, asset, stack, api_version, query_from)
+      (hash, type, datasetSlug, branch, queryString, referer, status, comment, "commit", count, earliest_ms, latest_ms, timing, asset, stack, api_version, query_from, event_code)
     VALUES
-      (@hash, @type, @datasetSlug, @branch, @queryString, @referer, @status, @comment, @commit, 1, @now_ms, @now_ms, @timing, @asset, @stack, @api_version, @query_from)
+      (@hash, @type, @datasetSlug, @branch, @queryString, @referer, @status, @comment, @commit, 1, @now_ms, @now_ms, @timing, @asset, @stack, @api_version, @query_from, @event_code)
     ON CONFLICT(hash) DO UPDATE SET
       count       = count + 1,
       latest_ms   = @now_ms,
+      event_code  = @event_code,
       api_version = CASE WHEN api_version IS NULL OR api_version = '' THEN @api_version ELSE api_version END,
       query_from  = CASE WHEN query_from  IS NULL OR query_from  = '' THEN @query_from  ELSE query_from  END,
       timing      = CASE
@@ -87,13 +88,14 @@ function prepareStatements() {
 export function recordEvent(params = {}){
     const k = key(params);
     const now_ms = Date.now();
-    const {type, asset, datasetSlug, branch, queryString, referer, status, comment, commit, timing, stack, api_version, query_from} = params;
+    const {type, asset, datasetSlug, branch, queryString, referer, status, comment, commit, timing, stack, api_version, query_from, event_code} = params;
 
     const result = stmtUpsert.get({
         hash: k, type, asset: asset ?? null, datasetSlug, branch, queryString,
         referer: referer ?? null, status, comment, commit: commit ?? null,
         now_ms, timing: timing ?? null, stack: stack ?? null,
-        api_version: api_version ?? null, query_from: query_from ?? null
+        api_version: api_version ?? null, query_from: query_from ?? null,
+        event_code: event_code ?? null
     });
 
     const count = result.count;
@@ -102,11 +104,11 @@ export function recordEvent(params = {}){
 }
 
 const ALLOWED_FILTER_COLUMNS = new Set([
-    'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset', 'referer', 'api_version', 'query_from'
+    'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset', 'referer', 'api_version', 'query_from', 'event_code'
 ]);
 const ALLOWED_ORDER_COLUMNS = new Set([
     'count', 'earliest_ms', 'latest_ms', 'timing', 'status',
-    'type', 'datasetSlug', 'branch', 'comment', 'asset', 'referer', 'api_version', 'query_from'
+    'type', 'datasetSlug', 'branch', 'comment', 'asset', 'referer', 'api_version', 'query_from', 'event_code'
 ]);
 
 export function retrieveEvents(filters = {}){
@@ -236,11 +238,12 @@ export async function loadEventsFromFile(){
       asset       TEXT,
       stack       TEXT,
       api_version TEXT,
-      query_from  TEXT
+      query_from  TEXT,
+      event_code  TEXT
     )
   `);
   // Migrate existing DBs that predate these columns
-  for (const col of ['api_version', 'query_from']) {
+  for (const col of ['api_version', 'query_from', 'event_code']) {
     try { db.exec(`ALTER TABLE events ADD COLUMN "${col}" TEXT`); } catch { /* already exists */ }
   }
   prepareStatements();
