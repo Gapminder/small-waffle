@@ -35,6 +35,7 @@ export default function initLegacyRoutes(api) {
       referer,
       user,
       permalinkToken,
+      api_version: "v2",
       redirectPrefix: `/v2/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
@@ -81,6 +82,7 @@ export default function initLegacyRoutes(api) {
       referer,
       user,
       permalinkToken,
+      api_version: "v2",
       redirectPrefix: `/v2/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 

@@ -279,6 +279,7 @@ export default function initRoutes(api) {
       referer,
       user,
       permalinkToken,
+      api_version: "v3",
       redirectPrefix: `/v3/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
@@ -325,6 +326,7 @@ export default function initRoutes(api) {
       referer,
       user,
       permalinkToken,
+      api_version: "v3",
       redirectPrefix: `/v3/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 

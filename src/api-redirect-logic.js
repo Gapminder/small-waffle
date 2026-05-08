@@ -13,9 +13,9 @@ const CACHECONTROL_FOR_ERROR = "no-store, max-age=0";
 const CACHECONTROL_FOR_REDIRECT = "public, s-maxage=300, max-age=300";
 const CACHECONTROL_FOR_SUCCESS = "public, s-maxage=31536000, max-age=14400";
 
-export default async function redirectLogic({params, queryString, type, referer="", user = {}, permalinkToken = "", redirectPrefix = "", redirectSuffix = "", getValidationError, callback}) {
+export default async function redirectLogic({params, queryString, type, referer="", user = {}, permalinkToken = "", redirectPrefix = "", redirectSuffix = "", getValidationError, callback, api_version = null}) {
     const {datasetSlug, branch, commit, asset} = params; 
-    const eventTemplate = {type, asset, datasetSlug, branch, commit, queryString, referer};
+    const eventTemplate = {type, asset, datasetSlug, branch, commit, queryString, referer, api_version};
     
     const knownErrors = errors(datasetSlug, branch, commit);
 
