@@ -98,8 +98,87 @@ export function recordEvent(params = {}){
     return count;
 }
 
-export function retrieveEvents(){
-    return stmtAll.all().map(({hash, ...record}) => [hash, record]);
+const ALLOWED_FILTER_COLUMNS = new Set([
+    'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset'
+]);
+const ALLOWED_ORDER_COLUMNS = new Set([
+    'count', 'earliest_ms', 'latest_ms', 'timing', 'status',
+    'type', 'datasetSlug', 'branch', 'comment', 'asset'
+]);
+
+export function retrieveEvents(filters = {}){
+    const conditions = [];
+    const bindings = {};
+    let orderClause = 'ORDER BY count DESC';
+    let limitClause = 'LIMIT 1000';
+
+    for (const [key, value] of Object.entries(filters)) {
+        if (key === 'limit') {
+            const n = parseInt(value, 10);
+            if (!isNaN(n) && n > 0) limitClause = `LIMIT ${n}`;
+            continue;
+        }
+        if (key === 'orderBy') {
+            const [col, dir] = value.split(':');
+            const direction = dir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+            if (ALLOWED_ORDER_COLUMNS.has(col)) {
+                orderClause = `ORDER BY "${col}" ${direction}`;
+            }
+            continue;
+        }
+        if (key === 'from_latest_ms') {
+            const n = parseInt(value, 10);
+            if (!isNaN(n)) { conditions.push(`latest_ms >= @from_latest_ms`); bindings.from_latest_ms = n; }
+            continue;
+        }
+        if (key === 'to_latest_ms') {
+            const n = parseInt(value, 10);
+            if (!isNaN(n)) { conditions.push(`latest_ms <= @to_latest_ms`); bindings.to_latest_ms = n; }
+            continue;
+        }
+        if (ALLOWED_FILTER_COLUMNS.has(key)) {
+            conditions.push(`"${key}" = @${key}`);
+            bindings[key] = value;
+        }
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const sql = `SELECT * FROM events ${where} ${orderClause} ${limitClause}`;
+    return db.prepare(sql).all(bindings).map(({hash, ...record}) => [hash, record]);
+}
+
+export function retrieveEventFacets(filters = {}){
+    const conditions = [];
+    const bindings = {};
+
+    if (filters.from_latest_ms) {
+        const n = parseInt(filters.from_latest_ms, 10);
+        if (!isNaN(n)) { conditions.push(`latest_ms >= @from_latest_ms`); bindings.from_latest_ms = n; }
+    }
+    if (filters.to_latest_ms) {
+        const n = parseInt(filters.to_latest_ms, 10);
+        if (!isNaN(n)) { conditions.push(`latest_ms <= @to_latest_ms`); bindings.to_latest_ms = n; }
+    }
+
+    const baseWhere = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const facets = {};
+    for (const col of ALLOWED_FILTER_COLUMNS) {
+        const colWhere = baseWhere
+            ? `${baseWhere} AND "${col}" IS NOT NULL`
+            : `WHERE "${col}" IS NOT NULL`;
+        const sql = `
+            SELECT "${col}" as value, SUM(count) as totalCount, COUNT(*) as uniqueEvents
+            FROM events
+            ${colWhere}
+            GROUP BY "${col}"
+            ORDER BY totalCount DESC
+        `;
+        facets[col] = db.prepare(sql).all(bindings);
+    }
+    const totalSql = `SELECT COUNT(*) as uniqueEvents, SUM(count) as totalCount FROM events ${baseWhere}`;
+    facets._total = db.prepare(totalSql).get(bindings);
+    return facets;
 }
 
 export function retrieveEvent(params){

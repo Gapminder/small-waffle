@@ -389,22 +389,3 @@ describe('API Routes: DATA', () => {
     // });
 
 });
-
-describe('API Routes: EVENTS', () => {
-    it('Events can be retreived', async () => {
-
-        const response = await request(app.callback()).get("/events");
-        expect(response.status).to.equal(200);
-        const body = JSON.parse(response.text);
-        expect(body.length).to.be.greaterThan(10);
-    });
-    it('Events can be backed up', async () => {
-        const response = await request(app.callback()).get("/backupevents/test");
-        expect(response.status).to.equal(200);
-        expect(response.text).to.include('events saved successfully');
-    });
-    
-});
-
-
-

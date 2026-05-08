@@ -1,6 +1,6 @@
 {
   "name": "small-waffle",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",

@@ -11,7 +11,8 @@ import {
 } from "./datasetManagement.js";
 
 import redirectLogic from "./api-redirect-logic.js"
-import { recordEvent, retrieveEvents, retrieveEvent, backupEvents, resetEvents } from "./event-analytics.js";
+import { recordEvent, retrieveEvent } from "./event-analytics.js";
+import initEventRoutes from "./api-events.js";
 import DDFCsvReader from "@vizabi/reader-ddfcsv";
 import { getHeapStatistics } from 'v8';
 
@@ -26,38 +27,7 @@ const liveSince = (new Date()).valueOf();
 
 export default function initRoutes(api) {
 
-  /*
-  * Fetch events
-  */
-  api.get("/events", async (ctx, next) => {
-    Log.debug("Received a request to list all events");
-    ctx.set('Cache-Control', "no-store, max-age=0");
-    ctx.status = 200; //not cached through cloudflare cache rule
-    ctx.body = JSON.stringify(retrieveEvents());
-  });
-
-  /*
-  * Backup events
-  */
-  api.get("/backupevents{/:filename}", async (ctx, next) => {
-    Log.debug("Received a request to backup events");
-    let filename = ctx.params.filename || "manual-backup";
-    ctx.set('Cache-Control', "no-store, max-age=0");
-    ctx.status = 200; //not cached through cloudflare cache rule
-    const backupStatus = await backupEvents({filename, timestamp: true});
-    ctx.body = JSON.stringify(backupStatus);
-  });
-
-  /*
-  * Reset events
-  */
-  api.get("/resetevents", async (ctx, next) => {
-    Log.debug("Received a request to reset all events");
-    ctx.set('Cache-Control', "no-store, max-age=0");
-    ctx.status = 200; //not cached through cloudflare cache rule
-    const resetStatus = await resetEvents();
-    ctx.body = JSON.stringify(resetStatus);
-  });
+  initEventRoutes(api);
 
   /*
   * Check server status, allowed and available datasets
