@@ -294,6 +294,20 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('rows').that.deep.include(["gap", 2015, 496533]);
         expect(response.body).to.have.property('rows').that.deep.include(["gap", 2016, 531062]);
     });
+    it('Successful case - datapoints 2D with $not in join where', async () => {
+        // english_speaking companies that are NOT foundations:
+        //   mic: is--english_speaking_company=true, is--foundation=false → INCLUDED
+        //   gap: is--english_speaking_company=true, is--foundation=true  → EXCLUDED by $not
+        // This previously crashed with "filter[field].map is not a function" before the $not fix.
+        const query = `_language=en&select_key@=company&=year;&value@=lines/_of/_code;;&from=datapoints&where_company=$company;&join_$company_key=company&where_$and@_is--english/_speaking/_company:true;&_$not_is--foundation:true`;
+        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        expect(response.status).to.equal(200);
+        expect(response.body).to.be.an('object');
+        expect(response.body).to.have.property('header').that.includes('lines_of_code');
+        expect(response.body).to.have.property('rows').that.deep.include(['mic', 2015, 62493]);
+        expect(response.body).to.have.property('rows').that.deep.include(['mic', 2016, 49595]);
+        expect(response.body.rows.map(r => r[0])).to.not.include('gap');
+    });
     it('Successful case - datapoints 3D', async () => {
         const query = `_language=en&select_key@=geo&=gender&=age&=time;&value@=population;;&from=datapoints&where_$and@_time=2002;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=fin`;
         const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
