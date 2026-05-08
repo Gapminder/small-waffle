@@ -69,13 +69,15 @@ function prepareStatements() {
     VALUES
       (@hash, @type, @datasetSlug, @branch, @queryString, @referer, @status, @comment, @commit, 1, @now_ms, @now_ms, @timing, @asset, @stack, @api_version, @query_from)
     ON CONFLICT(hash) DO UPDATE SET
-      count      = count + 1,
-      latest_ms  = @now_ms,
-      timing     = CASE
-                     WHEN timing IS NOT NULL AND @timing IS NOT NULL
-                     THEN ROUND((timing * count + @timing) / (count + 1))
-                     ELSE timing
-                   END
+      count       = count + 1,
+      latest_ms   = @now_ms,
+      api_version = CASE WHEN api_version IS NULL OR api_version = '' THEN @api_version ELSE api_version END,
+      query_from  = CASE WHEN query_from  IS NULL OR query_from  = '' THEN @query_from  ELSE query_from  END,
+      timing      = CASE
+                      WHEN timing IS NOT NULL AND @timing IS NOT NULL
+                      THEN ROUND((timing * count + @timing) / (count + 1))
+                      ELSE timing
+                    END
     RETURNING count
   `);
   stmtGet = db.prepare(`SELECT * FROM events WHERE hash = ?`);
