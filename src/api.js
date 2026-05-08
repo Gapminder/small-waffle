@@ -269,7 +269,7 @@ export default function initRoutes(api) {
     const user = ctx.state.user;
     const permalinkToken = ctx.get('x-share-token');
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer};
+    const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer, api_version: "v2"};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -315,7 +315,7 @@ export default function initRoutes(api) {
     const user = ctx.state.user;
     const permalinkToken = ctx.get('x-share-token');
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
+    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer, api_version: "v2"};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -346,12 +346,13 @@ export default function initRoutes(api) {
 
         try {
           const ddfQuery = Urlon.parse(decodeURIComponent(queryString));
+          const query_from = ddfQuery.from ?? null;
 
           if (ddfQuery.test500error)
             throw "Deliberate 500 error";
 
           if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "_dummy-private" || datasetSlug == "population" || datasetSlug == "povcalnet") ) {
-            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit});
+            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit, query_from});
             return success({
               header: ddfQuery.select.key.concat(ddfQuery.select.value),
               rows: [],
@@ -370,7 +371,7 @@ export default function initRoutes(api) {
 
           const timeEnd = new Date().valueOf();
           const timing = timeEnd - timeStart;
-          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing});
+          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing, query_from});
 
           return success(data);
         } catch (err) {
@@ -403,7 +404,7 @@ export default function initRoutes(api) {
     const queryString = ctx.querystring;
     const user = ctx.state.user;
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer};
+    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer, api_version: "v1"};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -433,12 +434,13 @@ export default function initRoutes(api) {
 
         try {
           const ddfQuery = Urlon.parse(decodeURIComponent(queryString));
+          const query_from = ddfQuery.from ?? null;
 
           if (ddfQuery.test500error)
             throw "Deliberate 500 error";
 
           if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "_dummy-private" || datasetSlug == "population" || datasetSlug == "povcalnet") ) {
-            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit});
+            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit, query_from});
             return success({
               header: ddfQuery.select.key.concat(ddfQuery.select.value),
               rows: [],
@@ -457,7 +459,7 @@ export default function initRoutes(api) {
 
           const timeEnd = new Date().valueOf();
           const timing = timeEnd - timeStart;
-          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing});
+          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing, query_from});
 
           return success(data);
         } catch (err) {

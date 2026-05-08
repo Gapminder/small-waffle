@@ -23,8 +23,8 @@ function createMD5Hash(input) {
     return hash.digest('hex');
 }
 
-function key({type="", asset="", datasetSlug="", branch="", queryString="", referer=""} = {}){
-    return createMD5Hash(`${type} ${asset} ${datasetSlug} ${branch} ${queryString} ${referer}`);
+function key({type="", asset="", datasetSlug="", branch="", queryString="", referer="", api_version=""} = {}){
+    return createMD5Hash(`${type} ${asset} ${datasetSlug} ${branch} ${queryString} ${referer} ${api_version}`);
 }
 
 function logstring({status, type, asset, datasetSlug, branch, commit, queryString, referer, comment, timing}){
@@ -65,9 +65,9 @@ function ensurePathExists(){
 function prepareStatements() {
   stmtUpsert = db.prepare(`
     INSERT INTO events
-      (hash, type, datasetSlug, branch, queryString, referer, status, comment, "commit", count, earliest_ms, latest_ms, timing, asset, stack)
+      (hash, type, datasetSlug, branch, queryString, referer, status, comment, "commit", count, earliest_ms, latest_ms, timing, asset, stack, api_version, query_from)
     VALUES
-      (@hash, @type, @datasetSlug, @branch, @queryString, @referer, @status, @comment, @commit, 1, @now_ms, @now_ms, @timing, @asset, @stack)
+      (@hash, @type, @datasetSlug, @branch, @queryString, @referer, @status, @comment, @commit, 1, @now_ms, @now_ms, @timing, @asset, @stack, @api_version, @query_from)
     ON CONFLICT(hash) DO UPDATE SET
       count      = count + 1,
       latest_ms  = @now_ms,
@@ -85,12 +85,13 @@ function prepareStatements() {
 export function recordEvent(params = {}){
     const k = key(params);
     const now_ms = Date.now();
-    const {type, asset, datasetSlug, branch, queryString, referer, status, comment, commit, timing, stack} = params;
+    const {type, asset, datasetSlug, branch, queryString, referer, status, comment, commit, timing, stack, api_version, query_from} = params;
 
     const result = stmtUpsert.get({
         hash: k, type, asset: asset ?? null, datasetSlug, branch, queryString,
         referer: referer ?? null, status, comment, commit: commit ?? null,
-        now_ms, timing: timing ?? null, stack: stack ?? null
+        now_ms, timing: timing ?? null, stack: stack ?? null,
+        api_version: api_version ?? null, query_from: query_from ?? null
     });
 
     const count = result.count;
@@ -99,11 +100,11 @@ export function recordEvent(params = {}){
 }
 
 const ALLOWED_FILTER_COLUMNS = new Set([
-    'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset'
+    'type', 'datasetSlug', 'branch', 'status', 'comment', 'asset', 'referer', 'api_version', 'query_from'
 ]);
 const ALLOWED_ORDER_COLUMNS = new Set([
     'count', 'earliest_ms', 'latest_ms', 'timing', 'status',
-    'type', 'datasetSlug', 'branch', 'comment', 'asset'
+    'type', 'datasetSlug', 'branch', 'comment', 'asset', 'referer', 'api_version', 'query_from'
 ]);
 
 export function retrieveEvents(filters = {}){
@@ -137,8 +138,12 @@ export function retrieveEvents(filters = {}){
             continue;
         }
         if (ALLOWED_FILTER_COLUMNS.has(key)) {
-            conditions.push(`"${key}" = @${key}`);
-            bindings[key] = value;
+            if (value === '__empty__') {
+                conditions.push(`("${key}" IS NULL OR "${key}" = '')`);
+            } else {
+                conditions.push(`"${key}" = @${key}`);
+                bindings[key] = value;
+            }
         }
     }
 
@@ -227,9 +232,15 @@ export async function loadEventsFromFile(){
       latest_ms   INTEGER,
       timing      REAL,
       asset       TEXT,
-      stack       TEXT
+      stack       TEXT,
+      api_version TEXT,
+      query_from  TEXT
     )
   `);
+  // Migrate existing DBs that predate these columns
+  for (const col of ['api_version', 'query_from']) {
+    try { db.exec(`ALTER TABLE events ADD COLUMN "${col}" TEXT`); } catch { /* already exists */ }
+  }
   prepareStatements();
   const count = db.prepare('SELECT COUNT(*) as n FROM events').get().n;
   Log.info(`Database initialized with ${count} events from ${isTestEnv ? ":memory:" : dbFilePath}`);
