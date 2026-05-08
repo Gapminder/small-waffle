@@ -22,13 +22,15 @@ db.pragma('journal_mode = WAL');
 
 function extractFrom(queryString) {
   if (!queryString) return null;
-  // Look for ;from= or $from= (start of string variant)
-  const markers = [';from=', '$from='];
+  // URLON v2: $key=value;key2=value2  → from appears as ;from= or $from= (if first)
+  // URLON v3: _key=value&key2=value2  → from appears as &from= or _from= (if first)
+  // Value is terminated by the next ; & _ or end-of-string
+  const markers = [';from=', '$from=', '&from=', '_from='];
   for (const marker of markers) {
     const idx = queryString.indexOf(marker);
     if (idx === -1) continue;
     const afterMarker = queryString.slice(idx + marker.length);
-    const endIdx = afterMarker.indexOf(';');
+    const endIdx = afterMarker.search(/[;&_]/);
     return endIdx === -1 ? afterMarker : afterMarker.slice(0, endIdx);
   }
   return null;
