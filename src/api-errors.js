@@ -55,6 +55,16 @@ export default function errors(datasetSlug, branch, commit) {
       `No asset provided in the route`,
       `Please specify an asset like https://waffle-endpoint.com/sg-master/assets/world-50m.json`
     ],
+    QUERY_STRUCTURE_ERROR: [
+      400,
+      `Too many query structure errors`,
+      `The query has structural issues according to ddf-query-validator`
+    ],
+    QUERY_DEFINITION_ERROR: [
+      400,
+      `Too many query definition errors`,
+      `The query has definition issues according to ddf-query-validator`
+    ],
     VALIDATE_UNAUTHORIZED: [
       401,
       `User doesn't have access to validate datasets or needs to login`,

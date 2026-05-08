@@ -28,10 +28,12 @@ export default async function redirectLogic({params, queryString, type, referer=
         recordEvent({...eventTemplate, status, comment: shortMessage, event_code: err});
         return {status, error: `${shortMessage} \n ${messageExtra}`, cacheControl};
 
-      } else if (typeof err === "string" 
-        && (err.includes("Too many query structure errors") || err.includes("Too many query definition errors"))) {        
-        // hardcoded known error from ddf-query-validator inside DDFCSV reader
-        recordEvent({...eventTemplate, status: 400, comment: err, event_code: "QUERY_VALIDATION_ERROR"});
+      } else if (typeof err === "string" && err.includes("Too many query structure errors")) {
+        recordEvent({...eventTemplate, status: 400, comment: err, event_code: "QUERY_STRUCTURE_ERROR"});
+        return {status: 400, error: `${err}`, cacheControl};
+
+      } else if (typeof err === "string" && err.includes("Too many query definition errors")) {
+        recordEvent({...eventTemplate, status: 400, comment: err, event_code: "QUERY_DEFINITION_ERROR"});
         return {status: 400, error: `${err}`, cacheControl};
 
       } else {
