@@ -1,6 +1,6 @@
 {
   "name": "small-waffle",
-  "version": "2.9.2",
+  "version": "3.0.0",
   "description": "Lightweight Waffle Server.",
   "main": "index.js",
   "type": "module",
@@ -31,7 +31,7 @@
     "koa-static": "^5.0.0",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "urlon": "^2.1.0"
+    "urlon": "^3.1.0"
   },
   "devDependencies": {
     "chai": "^6.2.2",

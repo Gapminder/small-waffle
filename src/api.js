@@ -1,5 +1,6 @@
 import Urlon from "urlon";
 import * as path from 'path';
+import initLegacyRoutes from "./api-legacy.js";
 import {
   datasetVersionReaderInstances,
   syncStatus,
@@ -258,9 +259,9 @@ export default function initRoutes(api) {
   });
 
   /*
-  * Get assets
+  * Get assets - v3
   */
-  api.get("/v2{/:datasetSlug}{/:branch}{/:commit}/assets{/:asset}", async (ctx, next) => {
+  api.get("/v3{/:datasetSlug}{/:branch}{/:commit}/assets{/:asset}", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -269,7 +270,7 @@ export default function initRoutes(api) {
     const user = ctx.state.user;
     const permalinkToken = ctx.get('x-share-token');
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer, api_version: "v2"};
+    const eventTemplate = {type: "asset", asset, datasetSlug, branch, referer, api_version: "v3"};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -278,7 +279,7 @@ export default function initRoutes(api) {
       referer,
       user,
       permalinkToken,
-      redirectPrefix: `/v2/${datasetSlug}/`,
+      redirectPrefix: `/v3/${datasetSlug}/`,
       redirectSuffix: `/assets/${asset}/`,
       getValidationError: () => {
         return !asset ? "ASSET_NOT_PROVIDED" : false;
@@ -304,9 +305,9 @@ export default function initRoutes(api) {
 
 
   /*
-  * Get data
+  * Get data - v3
   */  
-  api.get("/v2{/:datasetSlug}{/:branch}{/:commit}", async (ctx, next) => {
+  api.get("/v3{/:datasetSlug}{/:branch}{/:commit}", async (ctx, next) => {
 
     const datasetSlug = ctx.params.datasetSlug;
     const branch = ctx.params.branch;
@@ -315,7 +316,7 @@ export default function initRoutes(api) {
     const user = ctx.state.user;
     const permalinkToken = ctx.get('x-share-token');
     const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer, api_version: "v2"};
+    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer, api_version: "v3"};
 
     const {status, error, redirect, success, cacheControl} = await redirectLogic({
       params: ctx.params, 
@@ -324,7 +325,7 @@ export default function initRoutes(api) {
       referer,
       user,
       permalinkToken,
-      redirectPrefix: `/v2/${datasetSlug}/`,
+      redirectPrefix: `/v3/${datasetSlug}/`,
       getValidationError: () => {
         if ((typeof queryString !== "string") || queryString.length < 2) 
           return "NO_QUERY_PROVIDED";
@@ -393,93 +394,7 @@ export default function initRoutes(api) {
 
 
 
-  /*
-  * OLD API - DEPRECATED V1 API, TO BE DELETED IN V3
-  */  
-  api.get("{/:datasetSlug}{/:branch}{/:commit}", async (ctx, next) => {
-
-    const datasetSlug = ctx.params.datasetSlug;
-    const branch = ctx.params.branch;
-    const commit = ctx.params.commit;
-    const queryString = ctx.querystring;
-    const user = ctx.state.user;
-    const referer = ctx.request.headers['referer']; 
-    const eventTemplate = {type: "query", datasetSlug, branch, queryString, referer, api_version: "v1"};
-
-    const {status, error, redirect, success, cacheControl} = await redirectLogic({
-      params: ctx.params, 
-      queryString: queryString, 
-      type: "query",
-      referer,
-      user,
-      redirectPrefix: `/${datasetSlug}/`,
-      getValidationError: () => {
-        if ((typeof queryString !== "string") || queryString.length < 2) 
-          return "NO_QUERY_PROVIDED";
-
-        try {        
-          Urlon.parse(decodeURIComponent(queryString));
-        } catch (err) {
-          return "QUERY_PARSING_ERROR";
-        }
-
-        return false;
-      },
-
-      
-      callback: async ({success, error})=>{
-        const readerInstance = datasetVersionReaderInstances[datasetSlug][branch];
-        if (!readerInstance) 
-          return error("NO_READER_INSTANCE");
-
-        try {
-          const ddfQuery = Urlon.parse(decodeURIComponent(queryString));
-          const query_from = ddfQuery.from ?? null;
-
-          if (ddfQuery.test500error)
-            throw "Deliberate 500 error";
-
-          if (ddfQuery.from === "datapoints" && !ddfQuery.join && (datasetSlug == "_dummy-private" || datasetSlug == "population" || datasetSlug == "povcalnet") ) {
-            recordEvent({...eventTemplate, status: 200, comment: "Bomb query, empty response", branch, commit, query_from});
-            return success({
-              header: ddfQuery.select.key.concat(ddfQuery.select.value),
-              rows: [],
-              version: "",
-              comment: "👋 bomb query prevented, bye"
-            })
-          }
-
-          const event = retrieveEvent(eventTemplate);
-          if (!event) Log.info(`New query to reader --- ${datasetSlug}/${commit}?${queryString}`);
-          const timeStart = new Date().valueOf();
-
-          //ACTUAL READER WORK IS HERE
-          const data = await readerInstance.read(ddfQuery);
-          data.version = commit;
-
-          const timeEnd = new Date().valueOf();
-          const timing = timeEnd - timeStart;
-          recordEvent({...eventTemplate, status: 200, comment: "Resolved query", branch, commit, timing, query_from});
-
-          return success(data);
-        } catch (err) {
-          return error(err);
-        }
-
-      }
-    });
-
-
-    ctx.status = status;
-    ctx.set('Cache-Control', cacheControl);
-    if (error) ctx.throw(status, error);
-    if (redirect) ctx.redirect(redirect);
-    if (success) ctx.body = success;  
-  });
-
-
-
-
+  initLegacyRoutes(api);
 
   api.get("{/:possiblyAssetFolder}/*rest", async (ctx, next) => {
     const possiblyAssetFolder = ctx.params.possiblyAssetFolder;

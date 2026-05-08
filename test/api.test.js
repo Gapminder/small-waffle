@@ -153,48 +153,48 @@ describe('API Routes: INFO', () => {
 });
 
 
-describe('API Routes: ASSETS', () => {
+describe('API Routes: ASSETS (v3)', () => {
     it('ASSET_NOT_PROVIDED', async () => {
-        const response = await request(app.callback()).get("/v2/_dummy/assets/");
+        const response = await request(app.callback()).get("/v3/_dummy/assets/");
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No asset provided in the route");
     });
     it('NO_DATASET_GIVEN', async () => {
-        const response = await request(app.callback()).get('/v2/assets/waffle.png');
+        const response = await request(app.callback()).get('/v3/assets/waffle.png');
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Received a request with no dataset provided");
     });
     it('DATASET_NOT_CONFIGURED', async () => {
-        const response = await request(app.callback()).get('/v2/ritakukar/assets/waffle.png');
+        const response = await request(app.callback()).get('/v3/ritakukar/assets/waffle.png');
         expect(response.status).to.equal(403);
         expect(response.text).to.include("Dataset not configured");
     });
     it('Redirect when branch is not given', async () => {
-        const response = await request(app.callback()).get('/v2/_dummy/assets/waffle.png');
+        const response = await request(app.callback()).get('/v3/_dummy/assets/waffle.png');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(dummyMasterLatestCommit+"/assets/waffle.png");
     });
     it('Redirect when branch is unknown', async () => {
-        const response = await request(app.callback()).get('/v2/_dummy/unknown/assets/waffle.png');
+        const response = await request(app.callback()).get('/v3/_dummy/unknown/assets/waffle.png');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(dummyMasterLatestCommit+"/assets/waffle.png");
     });
     it('Redirect when branch is a known branch', async () => {
-        const response = await request(app.callback()).get('/v2/_dummy/master/assets/waffle.png');
+        const response = await request(app.callback()).get('/v3/_dummy/master/assets/waffle.png');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(dummyMasterLatestCommit+"/assets/waffle.png");
     });
     it('Redirect when commit is unknown', async () => {
-        const response = await request(app.callback()).get('/v2/_dummy/master/unknowncommit/assets/waffle.png');
+        const response = await request(app.callback()).get('/v3/_dummy/master/unknowncommit/assets/waffle.png');
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include(dummyMasterLatestCommit+"/assets/waffle.png");
     });
     it('Redirecting to target asset', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}/assets/waffle.png`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}/assets/waffle.png`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
         expect(response.text).to.include("/vizabi/ddf--test--companies/master/assets/waffle.png");
@@ -222,63 +222,64 @@ describe('API Routes: ASSETS', () => {
 
 
 
-describe('API Routes: DATA', () => {
+describe('API Routes: DATA (v3)', () => {
     it('NO_QUERY_PROVIDED 1', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
     it('NO_QUERY_PROVIDED 2', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
     it('NO_QUERY_PROVIDED 3', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?_`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?x`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("No query provided");
     });
     it('QUERY_PARSING_ERROR', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?_select_key@=key&=value;&value@;;&from=concepts.schema_`);
+        // v2-style query starting with '_' is an unexpected char for urlon v3
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?_select_key@=key&=value;&value@;;&from=concepts.schema_`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Query failed to parse");
     });
     it('NO_DATASET_GIVEN', async () => {
-        const response = await request(app.callback()).get(`/v2/?_select_key@=key&=value;&value@;;&from=concepts.schema`);
+        const response = await request(app.callback()).get(`/v3/?$select$key@=key&=value;&value@;;&from=concepts.schema`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Received a request with no dataset provided");
     });
     it('DATASET_NOT_CONFIGURED', async () => {
-        const response = await request(app.callback()).get(`/v2/webui?_select_key@=key&=value;&value@;;&from=concepts.schema`);
+        const response = await request(app.callback()).get(`/v3/webui?$select$key@=key&=value;&value@;;&from=concepts.schema`);
         expect(response.status).to.equal(403);
         expect(response.text).to.include("Dataset not configured");
     });
     it('Redirect when branch is not given', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy?_select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`);
+        const response = await request(app.callback()).get(`/v3/_dummy?$select$key@=english_speaking_company;&value@=name&=is--english_speaking_company;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?$select`);
     });
     it('Redirect when branch is unknown', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/unknown?_select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`);
+        const response = await request(app.callback()).get(`/v3/_dummy/unknown?$select$key@=english_speaking_company;&value@=name&=is--english_speaking_company;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?$select`);
     });
     it('Redirect when branch is a known branch', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master?_select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master?$select$key@=english_speaking_company;&value@=name&=is--english_speaking_company;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?$select`);
     });
     it('Redirect when commit is unknown', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/unknowncommit?_select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master/unknowncommit?$select$key@=english_speaking_company;&value@=name&=is--english_speaking_company;;&from=entities`);
         expect(response.status).to.equal(302);
         expect(response.text).to.include('Redirecting to');
-        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?_select_key`);
+        expect(response.text).to.include(`/_dummy/master/${dummyMasterLatestCommit}?$select`);
     });
     it('Successful case - entities', async () => {
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?_select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`);
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?$select$key@=english_speaking_company;&value@=name&=is--english_speaking_company;;&from=entities`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('english_speaking_company');
@@ -286,8 +287,8 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('rows').that.deep.include(['gap', 'Gapminder', 1]);
     });
     it('Successful case - datapoints 2D', async () => {
-        const query = `_language=en&select_key@=company&=year;&value@=lines/_of/_code;;&from=datapoints&where_company=$company;&join_$company_key=company&where_$or@_company_$in@=gap`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        const query = `$language=en&select$key@=company&=year;&value@=lines_of_code;;&from=datapoints&where$company=$company;&join$/$company$key=company&where$/$or@$company$/$in@=gap`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('lines_of_code');
@@ -298,9 +299,8 @@ describe('API Routes: DATA', () => {
         // english_speaking companies that are NOT foundations:
         //   mic: is--english_speaking_company=true, is--foundation=false → INCLUDED
         //   gap: is--english_speaking_company=true, is--foundation=true  → EXCLUDED by $not
-        // This previously crashed with "filter[field].map is not a function" before the $not fix.
-        const query = `_language=en&select_key@=company&=year;&value@=lines/_of/_code;;&from=datapoints&where_company=$company;&join_$company_key=company&where_$and@_is--english/_speaking/_company:true;&_$not_is--foundation:true`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        const query = `$language=en&select$key@=company&=year;&value@=lines_of_code;;&from=datapoints&where$company=$company;&join$/$company$key=company&where$/$and@$is--english_speaking_company:true;&$/$not$is--foundation:true`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('lines_of_code');
@@ -309,8 +309,8 @@ describe('API Routes: DATA', () => {
         expect(response.body.rows.map(r => r[0])).to.not.include('gap');
     });
     it('Successful case - datapoints 3D', async () => {
-        const query = `_language=en&select_key@=geo&=gender&=age&=time;&value@=population;;&from=datapoints&where_$and@_time=2002;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=fin`;
-        const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        const query = `$select$key@=geo&=gender&=age&=time;&value@=population;;&from=datapoints&where$/$and@$time=2002;&$geo=$geo;;;&join$/$geo$key=geo&where$/$or@$geo$/$in@=fin`;
+        const response = await request(app.callback()).get(`/v3/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
@@ -318,8 +318,8 @@ describe('API Routes: DATA', () => {
     });
     it('Successful case - datapoints large', async function() {
         this.timeout(5000);
-        const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
-        const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        const query = `$select$key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where$geo=$geo;&join$/$geo$key=geo&where$/$or@$geo$/$in@=world&=chn&=rus`;
+        const response = await request(app.callback()).get(`/v3/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
@@ -328,21 +328,14 @@ describe('API Routes: DATA', () => {
     });
     it('Successful case - datapoints large — ONCE AGAIN, should be faster!', async function() {
         this.timeout(5000);
-        const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
-        const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
-        expect(response.status).to.equal(200);
-        expect(response.body).to.have.property('rows').to.have.lengthOf(91506);
-    });
-    it('Successful case - datapoints large — DEPRECATED V1 API, TO BE DELETED IN V3', async function() {
-        this.timeout(5000);
-        const query = `_select_key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where_geo=$geo;&join_$geo_key=geo&where_$or@_geo_$in@=world&=chn&=rus`;
-        const response = await request(app.callback()).get(`/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        const query = `$select$key@=geo&=time&=age&=gender;&value@=population;;&from=datapoints&where$geo=$geo;&join$/$geo$key=geo&where$/$or@$geo$/$in@=world&=chn&=rus`;
+        const response = await request(app.callback()).get(`/v3/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.have.property('rows').to.have.lengthOf(91506);
     });
     it('Successful case - datapoints bomb query population 3D', async () => {
-        const query = `_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_`;
-        const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        const query = `$select$key@=geo&=year&=age;&value@=population;;&from=datapoints&where$`;
+        const response = await request(app.callback()).get(`/v3/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
@@ -350,8 +343,8 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('comment').to.include("bomb query prevented");
     });
     it('Successful case - datapoints bomb query population 4D', async () => {
-        const query = `_select_key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where_`;
-        const response = await request(app.callback()).get(`/v2/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
+        const query = `$select$key@=geo&=year&=age&=gender;&value@=population;;&from=datapoints&where$`;
+        const response = await request(app.callback()).get(`/v3/_dummy-private/main/${dummyPrivateMainLatestCommit}?${query}`);
         expect(response.status).to.equal(200);
         expect(response.body).to.be.an('object');
         expect(response.body).to.have.property('header').that.includes('population');
@@ -359,47 +352,35 @@ describe('API Routes: DATA', () => {
         expect(response.body).to.have.property('comment').to.include("bomb query prevented");
     });
     it('DDFCSV ddf-query-validator error - invalid "from" clause', async () => {
-        const query = `_select_key@=english/_speaking/_company;&value@=name&=rank&=is--english/_speaking/_company;;&from=blablabla`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        const query = `$select$key@=english_speaking_company;&value@=name&=rank&=is--english_speaking_company;;&from=blablabla`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause must be one of the list: concepts, entities, datapoints,");
     });
     it('DDFCSV ddf-query-validator error - missing "from" clause', async () => {
-        const query = `_select_key@=english/_speaking/_company;&value@=name&=rank&=is--english/_speaking/_company;;`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        const query = `$select$key@=english_speaking_company;&value@=name&=rank&=is--english_speaking_company`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("* 'from' clause couldn't be empty");
     });
     it('DDFCSV ddf-query-validator error - wrong dataset requested', async () => {
-        const query = `_select_key@=geo&=time&=age;&value@=population;;&from=datapoints&where_$and@_year=2022;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=world`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        const query = `$select$key@=geo&=time&=age;&value@=population;;&from=datapoints&where$/$and@$year=2022;&$geo=$geo;;;&join$/$geo$key=geo&where$/$or@$geo$/$in@=world`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Too many query definition errors");
     });
     it('DDFCSV ddf-query-validator error - boolean operator $nor given as object, not array', async () => {
-        // Without the '@' array sigil, Urlon parses $nor as an object instead of an array.
-        // This used to crash the server with "filter[field].map is not a function" → HTTP 500.
-        // Fixed in ddf-query-validator >=1.4.5: validateWhereStructure rejects non-array boolean operators.
-        const query = `_select_key@=company&=year;&value@=lines/_of/_code;;&from=datapoints&where_$nor_company_$in@=gap`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        // Without the '@' array sigil, urlon v3 parses $nor as an object instead of an array.
+        const query = `$select$key@=company&=year;&value@=lines_of_code;;&from=datapoints&where$/$nor$company$/$in@=gap`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(400);
         expect(response.text).to.include("Too many query structure errors");
         expect(response.text).to.include("operator '$nor' must be an array");
     });
     it('Deliberate crash to create a 500 error', async () => {
-        const query = `_test500error:true&select_key@=english/_speaking/_company;&value@=name&=is--english/_speaking/_company;;&from=entities`;
-        const response = await request(app.callback()).get(`/v2/_dummy/master/${dummyMasterLatestCommit}?${query}`);
+        const query = `$test500error:true&select$key@=english_speaking_company;&value@=name&=is--english_speaking_company;;&from=entities`;
+        const response = await request(app.callback()).get(`/v3/_dummy/master/${dummyMasterLatestCommit}?${query}`);
         expect(response.status).to.equal(500);
         expect(response.text).to.include('Internal Server Error');
     });
-    // this test takes very long and breaks the subsequent tests!
-    // it('Deliberate crash from within the reader', async () => {
-    //     //this query is achieved by taking a correct query and using double quotes around it in lunux
-    //     //echo "http://localhost:4444/population-master/8606720f16f1afa47b719f951c1a3e42f83e93ad?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_$and@_year=2022;&_geo=$geo;;;&join_$geo_key=geo&where_$or@_geo_$in@=world"
-    //     //doesn't matter on which dataset you perform it it's still doomy
-    //     const response = await request(app.callback()).get(`/population-master/${popMasterLatestCommit}?_select_key@=geo&=year&=age;&value@=population;;&from=datapoints&where_@_year=2022;&_geo=;;;&join_=geo&where_@_geo_@=world`);
-    //     expect(response.status).to.equal(500);
-    //     expect(response.text).to.include('Internal Server Error');
-    // });
-
 });
