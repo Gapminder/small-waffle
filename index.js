@@ -32,6 +32,12 @@ Log.info(`🚀 Starting small-waffle on PORT ${port}`);
 const app = new Koa();
 const api = new Router(); // routes for the main API
 
+// Suppress harmless client-disconnect errors so they don't trigger shutdown()
+app.on('error', (err) => {
+  if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') return;
+  Log.error('Koa error:', err);
+});
+
 await loadAllDatasets();
 await loadEventsFromFile();
 initRoutes(api);

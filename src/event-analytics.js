@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import Log from "./logger.js";
-import {promises as fs, existsSync, mkdirSync} from 'fs';
+import {promises as fs, existsSync, mkdirSync, createWriteStream} from 'fs';
 import path from 'path';
 import cron from 'node-cron';
 
@@ -204,7 +204,18 @@ export async function backupEvents({filename = "backup", timestamp = false} = {}
 
   try {
     const entries = stmtAll.all().map(({hash, ...record}) => [hash, record]);
-    await fs.writeFile(fileName, JSON.stringify(entries));
+    // Use a write stream to avoid RangeError: Invalid string length when the DB is very large
+    await new Promise((resolve, reject) => {
+      const stream = createWriteStream(fileName);
+      stream.on('error', reject);
+      stream.on('finish', resolve);
+      stream.write('[');
+      for (let i = 0; i < entries.length; i++) {
+        if (i > 0) stream.write(',');
+        stream.write(JSON.stringify(entries[i]));
+      }
+      stream.end(']');
+    });
     const status = `Event backup with ${entries.length} events saved successfully to ${fileName}.`;
     Log.info(status);
     return ({status});
