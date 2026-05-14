@@ -32,9 +32,12 @@ Log.info(`🚀 Starting small-waffle on PORT ${port}`);
 const app = new Koa();
 const api = new Router(); // routes for the main API
 
-// Suppress harmless client-disconnect errors so they don't trigger shutdown()
+// Route Koa errors: suppress restarts and noisy 4xx logs
+// (4xx client errors are already recorded via recordEvent in api-redirect-logic.js
+// before ctx.throw() fires; this handler just prevents them reaching PM2 logs)
 app.on('error', (err) => {
-  if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') return;
+  if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') return; // client disconnected mid-stream
+  if (err.expose) return;                                // expected 4xx, already recorded
   Log.error('Koa error:', err);
 });
 
