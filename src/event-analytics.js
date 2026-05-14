@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import Log from "./logger.js";
-import {promises as fs, existsSync, mkdirSync, createWriteStream} from 'fs';
+import {existsSync, mkdirSync} from 'fs';
 import path from 'path';
 import cron from 'node-cron';
 
@@ -15,7 +15,6 @@ const dbFilePath = isTestEnv ? ":memory:" : path.join(backupFilePath, `${dbName}
 let db = null;
 let stmtUpsert = null;
 let stmtGet = null;
-let stmtAll = null;
 
 function createMD5Hash(input) {
     const hash = crypto.createHash('md5');
@@ -82,7 +81,6 @@ function prepareStatements() {
     RETURNING count
   `);
   stmtGet = db.prepare(`SELECT * FROM events WHERE hash = ?`);
-  stmtAll = db.prepare(`SELECT * FROM events`);
 }
 
 export function recordEvent(params = {}){
@@ -200,23 +198,11 @@ export function retrieveEvent(params){
 export async function backupEvents({filename = "backup", timestamp = false} = {}) {
   ensurePathExists();
   const dateFormat = () => new Date().toISOString().slice(0,19).replaceAll(":","-");
-  const fileName = path.join(backupFilePath, `${filename}${timestamp ? "_" + dateFormat() : ""}.json`);
+  const fileName = path.join(backupFilePath, `${filename}${timestamp ? "_" + dateFormat() : ""}.db`);
 
   try {
-    const entries = stmtAll.all().map(({hash, ...record}) => [hash, record]);
-    // Use a write stream to avoid RangeError: Invalid string length when the DB is very large
-    await new Promise((resolve, reject) => {
-      const stream = createWriteStream(fileName);
-      stream.on('error', reject);
-      stream.on('finish', resolve);
-      stream.write('[');
-      for (let i = 0; i < entries.length; i++) {
-        if (i > 0) stream.write(',');
-        stream.write(JSON.stringify(entries[i]));
-      }
-      stream.end(']');
-    });
-    const status = `Event backup with ${entries.length} events saved successfully to ${fileName}.`;
+    await db.backup(fileName);
+    const status = `Event backup saved successfully to ${fileName}.`;
     Log.info(status);
     return ({status});
   } catch (error) {

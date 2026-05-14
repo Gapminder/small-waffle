@@ -84,7 +84,7 @@ describe('API Routes: EVENTS', () => {
           .set('x-test-user-sub', fakeUserReader.sub)
           .set('x-test-user-email', fakeUserReader.email);
         expect(response.status).to.equal(200);
-        expect(response.text).to.include('events saved successfully');
+        expect(response.text).to.include('Event backup saved successfully');
     });
     it('Backup events requires authentication', async () => {
         const response = await request(app.callback()).get("/backupevents/test");
