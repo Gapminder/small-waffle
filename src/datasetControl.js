@@ -6,6 +6,16 @@ import {readListFromFile, writeListToFile} from './backupDBTables.js';
 export let datasetControlList = [];
 const ALL = "__all__"; //sentinel string hardcoded in the database, the dataset will be cloned into all repos
 
+class PublicOnlyError extends Error {}
+
+function setDatasetControlList(rows) {
+  if (process.env.WAFFLE_PUBLIC_ONLY === "1" && rows.some(dataset => dataset.is_private !== false)) {
+    datasetControlList = [];
+    throw new PublicOnlyError("Public-only deployment refused datasets that are not explicitly public");
+  }
+  datasetControlList = rows;
+}
+
 export async function updateDatasetControlList() {
   try {
     if (
@@ -23,10 +33,11 @@ export async function updateDatasetControlList() {
       throw new Error(`.env file is not configured correctly`);
     }
   } catch (e) {
+    if (e instanceof PublicOnlyError) throw e;
     Log.error(e);
     Log.info("⚠️ CAN NOT ACCESS DATASET CONTROL LIST, ATTEMPTING TO RESTORE FROM BACKUP");
     const rows = await readListFromFile('datasetControlList.backup.json');
-    if (rows?.length > 0) datasetControlList = rows;
+    if (rows?.length > 0) setDatasetControlList(rows);
   }
 
   const allslugs = datasetControlList.length > 0 ? datasetControlList.map(m => m.slug).join(", ") : "";
@@ -54,13 +65,13 @@ async function updateDatasetControlListFromGoogleSpreadsheet() {
   if (!response.ok)
     throw new Error(`Failed to fetch CSV: ${response.statusText}`);
 
-  datasetControlList = [];
+  const rows = [];
   // Wrap the stream in an async iterator
   const parser = response.body.pipe(csv());
 
   for await (const row of parser) {
     if(row?.server === serverId || row?.server === ALL)
-      datasetControlList.push({
+      rows.push({
         slug: row.id,
         githubRepoId: row.github_repo_id,
         branches: row.branches.split(",").map(s => s.trim()),
@@ -70,6 +81,7 @@ async function updateDatasetControlListFromGoogleSpreadsheet() {
       });
   }
 
+  setDatasetControlList(rows);
   Log.info("Saving DS control list to a backup file");
   await writeListToFile(datasetControlList, 'datasetControlList.backup.json');
   return datasetControlList;
@@ -95,14 +107,14 @@ async function updateDatasetControlListFromSupabaseDb() {
 
   const rows = await response.json();
 
-  datasetControlList = rows.map(row => ({
+  setDatasetControlList(rows.map(row => ({
     slug: row.id,
     githubRepoId: row.github_repo_id,
     branches: row.branches.split(",").map(s => s.trim()),
     default_branch: row.default_branch,
     is_private: row.is_private,
     waffleFetcherAppInstallationId: row.waffle_fetcher_app_installation_id,
-  }));
+  })));
 
   Log.info("Saving DS control list to a backup file");
   await writeListToFile(datasetControlList, 'datasetControlList.backup.json');

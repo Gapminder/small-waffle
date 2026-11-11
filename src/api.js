@@ -401,6 +401,21 @@ export default function initRoutes(api) {
   api.get("{/:possiblyAssetFolder}/*rest", async (ctx, next) => {
     const possiblyAssetFolder = ctx.params.possiblyAssetFolder;
 
+    if (process.env.WAFFLE_PUBLIC_ONLY === "1") {
+      let requestPath;
+      try {
+        requestPath = decodeURIComponent(ctx.path);
+      } catch {
+        ctx.throw(400, "Invalid path");
+      }
+      const isPublicAsset = !requestPath.split("/").some(part => part === "." || part === "..")
+        && datasetControlList.some(dataset => dataset.is_private === false && dataset.branches.some(branch =>
+          requestPath.startsWith(`/${dataset.githubRepoId}/${branch}/assets/`)));
+      if (isPublicAsset) await next();
+      else ctx.throw(404, "Route not found");
+      return;
+    }
+
     const folders = new Set(datasetControlList.map(item => item.githubRepoId.split('/')[0]));
     if (folders.has(possiblyAssetFolder)) {
       //pass on this request to koa-static

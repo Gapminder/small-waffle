@@ -1,9 +1,9 @@
+import "./src/loadEnvironment.js";
 import Koa from "koa";
 import Router from "koa-router";
 import serve from "koa-static";
 import jwt from "koa-jwt";
 import cors from '@koa/cors';
-import dotenv from 'dotenv';
 import compress from "koa-compress";
 import { getHeapStatistics } from 'v8';
 import {
@@ -16,14 +16,6 @@ import Log from "./src/logger.js";
 
 Log.time("spinup time");
 
-const dotenvResult = dotenv.config();
-
-if (dotenvResult.error) {
-  Log.error("Failed to load .env file: " + dotenvResult.error);
-  process.exit(1); // Exit the process with an error code
-} else {
-  Log.info("Environment variables loaded successfully.");
-}
 
 const port = process.env.PORT || 3333;
 
@@ -80,8 +72,6 @@ app.use(serve('datasets', {maxage: 14400*1000, setHeaders: (res, path, stats) =>
 const server = app.listen(port);
 
 Log.timeEnd("spinup time");
-
-
 
 async function checkMemoryUsage() {
   const { heapTotal } = process.memoryUsage();

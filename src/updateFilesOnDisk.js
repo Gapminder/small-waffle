@@ -107,7 +107,7 @@ export async function validateDatasetOnDisk(rootPath, dataset, branch, updateSyn
 
 
 async function runInSidecarProcess({ action, slug, dir, url, branch, updateSyncStatus, waffleFetcherAppInstallationId, latestCommit, skipValidation = false }) {
-  const SIDECAR_URL = "http://127.0.0.1" + ":" + (+process.env.PORT + 1);
+  const SIDECAR_URL = "http://127.0.0.1" + ":" + (+(process.env.PORT || 3333) + 1);
   const headers = { 'Content-Type': 'application/json', 'X-Worker-Secret': process.env.SIDECAR_SECRET };
   const POLLING_INTERVAL_MS = 500;
   const POLLING_TIMEOUT_MS = 10 * 60 * 1000;

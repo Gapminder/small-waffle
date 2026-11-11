@@ -1,22 +1,12 @@
+import "./src/loadEnvironment.js";
 // git-worker/index.js
 import nodeHttp from 'node:http';
 import Log from "./src/logger.js";
 import { validate } from "@gapminder/validate-ddf";
-import dotenv from 'dotenv';
 import { getGithubAuthHandler } from './src/githubAppConnection.js';
 import fs from 'fs';
 import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node';  // let exports map pick node/index.js
-
-
-const dotenvResult = dotenv.config();
-
-if (dotenvResult.error) {
-  Log.error("Failed to load .env file: " + dotenvResult.error);
-  process.exit(1); // Exit the process with an error code
-} else {
-  Log.info("Environment variables loaded successfully.");
-}
 
 const SECRET = process.env.SIDECAR_SECRET;
 const PORT = process.env.SIDECAR_PORT;
