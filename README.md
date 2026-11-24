@@ -74,3 +74,11 @@ http://localhost:3333/fasttrack/master?_select_key@=key&=value;&value@;;&from=co
 
 //example of a datapoint schema request
 http://localhost:3333/fasttrack/master?_select_key@=key&=value;&value@;;&from=datapoints.schema
+
+## Publish a container with GitHub Actions
+
+This repo owns its [Dockerfile](Dockerfile) and [release workflow](.github/workflows/publish-image.yml). The image is `ghcr.io/gapminder/small-waffle`.
+
+After committing a version bump in `package.json`, push a matching Git tag such as `v4.0.0`. GitHub Actions builds and checks AMD64 and ARM64 images and publishes the version and `latest` tags. You can also run **Actions → Publish container → Run workflow** on a committed branch. Your Mac needs neither Docker nor registry credentials.
+
+An existing version is skipped without moving `latest`. Deployment remains a separate choice: select a version or the digest from the workflow summary in Dokploy, preserving its existing environment and volumes. For first-time organization setup, see the [publishing guide](docs/PUBLISHING.md).

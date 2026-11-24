@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+build
+.env
+.env.*
+*.pem
+datasets
+events
+backup
